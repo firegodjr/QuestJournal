@@ -8,6 +8,33 @@
     - Mainquests - Things that are high priority and should be the first thing worked, like the main quest in a video game.
     - Sidequests - Things that are lower priority, or smaller tasks, and can be completed whenever.
 
+## Example
+```md
+# TODAY
+## MAINQUESTS
+- [>] Implement that feature
+    - Do we need to worry about the side effects?
+    - [ ] Worry about side effects
+    - [~] Talk to Dave
+        - Dave is busy
+## SIDEQUESTS
+- [ ] Vibe code a personal app instead of working
+
+# TOMORROW
+## MAINQUESTS
+- [ ] Handle that issue for QA
+- [ ] Something else to do in the future
+## SIDEQUESTS
+...
+
+# YESTERDAY
+## MAINQUESTS
+- [x] A task I completed
+    - [x] Subtask 1
+## SIDEQUESTS
+...
+```
+
 ## Tasks
 - Tasks can have multiple types of checked, which changes how they're handled:
     - `- [ ]` - not being worked
