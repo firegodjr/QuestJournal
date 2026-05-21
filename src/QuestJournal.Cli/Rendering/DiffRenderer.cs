@@ -50,7 +50,7 @@ public sealed class DiffRenderer
         var sparkle = $"[yellow1]{Markup.Escape(_theme.Xp)}[/]";
         if (xpAwarded > 0)
         {
-            AnsiConsole.MarkupLine($"{sparkle} [green]+{xpAwarded}earned[/] · [yellow1]{totalXp} total[/]");
+            AnsiConsole.MarkupLine($"[green]+{xpAwarded}XP earned[/]! {sparkle} [yellow1]{totalXp} total[/]");
         }
         else
         {
