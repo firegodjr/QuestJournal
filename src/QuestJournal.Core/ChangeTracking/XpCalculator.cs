@@ -10,6 +10,7 @@ public static class XpCalculator
         Change.StatusChanged sc when sc.NewStatus == QuestStatus.Cancelled => 1,
         Change.StatusChanged => 2,
         Change.Added a when a.Status == QuestStatus.Comment => 0,
+        Change.Added a when a.Status == QuestStatus.Completed && DayNames.IsYesterday(a.Key.Day) => 10,
         Change.Added => 1,
         Change.Removed => 0,
         _ => 0,

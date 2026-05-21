@@ -81,4 +81,85 @@ public class ChangeDetectorTests
         Assert.Equal("beta", removed.Key.Text);
         Assert.Equal(QuestStatus.Open, removed.LastStatus);
     }
+
+    [Fact]
+    public void Today_to_yesterday_completion_collapses_to_single_status_change()
+    {
+        var prior = Parse("# TODAY\n## MAINQUESTS\n- [ ] alpha\n# YESTERDAY\n## MAINQUESTS\n");
+        var current = Parse("# TODAY\n## MAINQUESTS\n# YESTERDAY\n## MAINQUESTS\n- [x] alpha\n");
+        var changes = new ChangeDetector().Detect(SnapshotOf(prior), current);
+
+        var change = Assert.Single(changes.Changes);
+        var sc = Assert.IsType<Change.StatusChanged>(change);
+        Assert.Equal("alpha", sc.Key.Text);
+        Assert.Equal("YESTERDAY", sc.Key.Day);
+        Assert.Equal(QuestStatus.Open, sc.OldStatus);
+        Assert.Equal(QuestStatus.Completed, sc.NewStatus);
+    }
+
+    [Fact]
+    public void Tomorrow_to_yesterday_completion_collapses_source_agnostic()
+    {
+        var prior = Parse("# TOMORROW\n## MAINQUESTS\n- [ ] epsilon\n# YESTERDAY\n## MAINQUESTS\n");
+        var current = Parse("# TOMORROW\n## MAINQUESTS\n# YESTERDAY\n## MAINQUESTS\n- [x] epsilon\n");
+        var changes = new ChangeDetector().Detect(SnapshotOf(prior), current);
+
+        var change = Assert.Single(changes.Changes);
+        var sc = Assert.IsType<Change.StatusChanged>(change);
+        Assert.Equal("epsilon", sc.Key.Text);
+        Assert.Equal("YESTERDAY", sc.Key.Day);
+        Assert.Equal(QuestStatus.Open, sc.OldStatus);
+        Assert.Equal(QuestStatus.Completed, sc.NewStatus);
+    }
+
+    [Fact]
+    public void Today_to_yesterday_cancellation_collapses_to_status_change()
+    {
+        var prior = Parse("# TODAY\n## MAINQUESTS\n- [>] beta\n# YESTERDAY\n## MAINQUESTS\n");
+        var current = Parse("# TODAY\n## MAINQUESTS\n# YESTERDAY\n## MAINQUESTS\n- [~] beta\n");
+        var changes = new ChangeDetector().Detect(SnapshotOf(prior), current);
+
+        var change = Assert.Single(changes.Changes);
+        var sc = Assert.IsType<Change.StatusChanged>(change);
+        Assert.Equal(QuestStatus.Active, sc.OldStatus);
+        Assert.Equal(QuestStatus.Cancelled, sc.NewStatus);
+    }
+
+    [Fact]
+    public void Brand_new_yesterday_completion_stays_added()
+    {
+        var prior = Parse("# TODAY\n## MAINQUESTS\n");
+        var current = Parse("# TODAY\n## MAINQUESTS\n# YESTERDAY\n## MAINQUESTS\n- [x] delta\n");
+        var changes = new ChangeDetector().Detect(SnapshotOf(prior), current);
+
+        var change = Assert.Single(changes.Changes);
+        var added = Assert.IsType<Change.Added>(change);
+        Assert.Equal("delta", added.Key.Text);
+        Assert.Equal(QuestStatus.Completed, added.Status);
+        Assert.Equal("YESTERDAY", added.Key.Day);
+    }
+
+    [Fact]
+    public void Move_to_non_yesterday_day_does_not_collapse()
+    {
+        var prior = Parse("# TODAY\n## MAINQUESTS\n- [ ] gamma\n# TOMORROW\n## MAINQUESTS\n");
+        var current = Parse("# TODAY\n## MAINQUESTS\n# TOMORROW\n## MAINQUESTS\n- [x] gamma\n");
+        var changes = new ChangeDetector().Detect(SnapshotOf(prior), current);
+
+        Assert.Equal(2, changes.Changes.Count);
+        Assert.Single(changes.Changes.OfType<Change.Added>());
+        Assert.Single(changes.Changes.OfType<Change.Removed>());
+    }
+
+    [Fact]
+    public void Same_status_move_to_yesterday_does_not_collapse()
+    {
+        var prior = Parse("# TODAY\n## MAINQUESTS\n- [x] zeta\n# YESTERDAY\n## MAINQUESTS\n");
+        var current = Parse("# TODAY\n## MAINQUESTS\n# YESTERDAY\n## MAINQUESTS\n- [x] zeta\n");
+        var changes = new ChangeDetector().Detect(SnapshotOf(prior), current);
+
+        Assert.Equal(2, changes.Changes.Count);
+        Assert.Single(changes.Changes.OfType<Change.Added>());
+        Assert.Single(changes.Changes.OfType<Change.Removed>());
+    }
 }

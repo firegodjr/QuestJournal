@@ -29,6 +29,28 @@ public class XpCalculatorTests
         Assert.Equal(expected, XpCalculator.Award(new Change.Added(K, status)));
     }
 
+    private static TaskKey KeyOn(string day) =>
+        new(day, "MAINQUESTS", ImmutableArray<string>.Empty, "alpha");
+
+    [Theory]
+    [InlineData("YESTERDAY", 10L)]
+    [InlineData("yesterday", 10L)]
+    [InlineData("Yesterday", 10L)]
+    [InlineData("TODAY", 1L)]
+    [InlineData("TOMORROW", 1L)]
+    public void Added_completed_in_yesterday_is_worth_ten(string day, long expected)
+    {
+        var change = new Change.Added(KeyOn(day), QuestStatus.Completed);
+        Assert.Equal(expected, XpCalculator.Award(change));
+    }
+
+    [Fact]
+    public void Added_cancelled_in_yesterday_is_worth_one()
+    {
+        var change = new Change.Added(KeyOn("YESTERDAY"), QuestStatus.Cancelled);
+        Assert.Equal(1L, XpCalculator.Award(change));
+    }
+
     [Theory]
     [InlineData(QuestStatus.Open)]
     [InlineData(QuestStatus.Completed)]
