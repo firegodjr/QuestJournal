@@ -1,3 +1,4 @@
+using QuestJournal.Cli.ChangeTracking;
 using QuestJournal.Cli.Rendering;
 using QuestJournal.Core.Configuration;
 using QuestJournal.Core.Model;
@@ -60,6 +61,11 @@ public sealed class StatusCommand
         var doc = new JournalParser().ParseFile(filePath);
         var theme = config.NerdFontGlyphs ? GlyphTheme.NerdFont : GlyphTheme.Ascii;
         var renderer = new StatusRenderer(theme);
+
+        new ChangeTrackingPipeline(theme).RunAfter(
+            doc,
+            journalPath: filePath,
+            writeSnapshot: fileOverride is null);
 
         IEnumerable<DaySection> targets;
         if (all)

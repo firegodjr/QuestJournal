@@ -1,5 +1,8 @@
 using System.Diagnostics;
+using QuestJournal.Cli.ChangeTracking;
+using QuestJournal.Cli.Rendering;
 using QuestJournal.Core.Configuration;
+using QuestJournal.Core.Parsing;
 using Spectre.Console;
 
 namespace QuestJournal.Cli.Commands;
@@ -65,6 +68,15 @@ public sealed class EditCommand
             return 1;
         }
         proc.WaitForExit();
-        return proc.ExitCode;
+        var exitCode = proc.ExitCode;
+
+        if (File.Exists(filePath))
+        {
+            var doc = new JournalParser().ParseFile(filePath);
+            var theme = config.NerdFontGlyphs ? GlyphTheme.NerdFont : GlyphTheme.Ascii;
+            new ChangeTrackingPipeline(theme).RunAfter(doc, filePath, writeSnapshot: true);
+        }
+
+        return exitCode;
     }
 }
