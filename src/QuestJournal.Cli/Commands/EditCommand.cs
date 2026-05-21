@@ -74,7 +74,12 @@ public sealed class EditCommand
         {
             var doc = new JournalParser().ParseFile(filePath);
             var theme = config.NerdFontGlyphs ? GlyphTheme.NerdFont : GlyphTheme.Ascii;
-            new ChangeTrackingPipeline(theme).RunAfter(doc, filePath, writeSnapshot: true);
+            var pipeline = new ChangeTrackingPipeline(theme);
+            var result = pipeline.RunAfter(doc, filePath, writeSnapshot: true);
+            if (result.HasChanges)
+            {
+                pipeline.RenderXpFooter(result);
+            }
         }
 
         return exitCode;

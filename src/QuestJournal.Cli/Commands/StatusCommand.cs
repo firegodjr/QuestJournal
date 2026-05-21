@@ -62,7 +62,8 @@ public sealed class StatusCommand
         var theme = config.NerdFontGlyphs ? GlyphTheme.NerdFont : GlyphTheme.Ascii;
         var renderer = new StatusRenderer(theme);
 
-        new ChangeTrackingPipeline(theme).RunAfter(
+        var pipeline = new ChangeTrackingPipeline(theme);
+        var trackingResult = pipeline.RunAfter(
             doc,
             journalPath: filePath,
             writeSnapshot: fileOverride is null);
@@ -106,6 +107,9 @@ public sealed class StatusCommand
             renderer.RenderDay(day);
             first = false;
         }
+
+        AnsiConsole.WriteLine();
+        pipeline.RenderXpFooter(trackingResult);
 
         return 0;
     }

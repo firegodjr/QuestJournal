@@ -13,7 +13,7 @@ public sealed class DiffRenderer
         _theme = theme;
     }
 
-    public void Render(ChangeSet changeSet, long xpAwarded, long totalXp)
+    public void RenderDiffTree(ChangeSet changeSet)
     {
         if (changeSet.IsEmpty) return;
 
@@ -42,13 +42,20 @@ public sealed class DiffRenderer
         }
 
         AnsiConsole.Write(root);
+        AnsiConsole.WriteLine();
+    }
 
+    public void RenderXpFooter(long xpAwarded, long totalXp)
+    {
+        var sparkle = $"[yellow1]{Markup.Escape(_theme.Xp)}[/]";
         if (xpAwarded > 0)
         {
-            AnsiConsole.MarkupLine($"[green]+{xpAwarded} XP[/] [dim]earned · Total: {totalXp}[/]");
+            AnsiConsole.MarkupLine($"{sparkle} [green]+{xpAwarded}earned[/] · [yellow1]{totalXp} total[/]");
         }
-
-        AnsiConsole.WriteLine();
+        else
+        {
+            AnsiConsole.MarkupLine($"{sparkle} [yellow1]{totalXp} total[/]");
+        }
     }
 
     private void BuildAndEmit(TreeNode parent, List<Change> changes)

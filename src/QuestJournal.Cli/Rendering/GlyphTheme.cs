@@ -8,7 +8,8 @@ public sealed record GlyphTheme(
     string Cancelled,
     string Warning,
     string Completed,
-    string Comment)
+    string Comment,
+    string Xp)
 {
     public static GlyphTheme Ascii { get; } = new(
         Open: "[ ]",
@@ -16,15 +17,17 @@ public sealed record GlyphTheme(
         Cancelled: "[~]",
         Warning: "[!]",
         Completed: "[x]",
-        Comment: "•");
+        Comment: "•",
+        Xp: "❈");
 
     public static GlyphTheme NerdFont { get; } = new(
-        Open: "󰄱",   // 󰄱
-        Active: "",     //
-        Cancelled: "󰰱", // 󰰱
-        Warning: "",    //
-        Completed: "",  //
-        Comment: "•");
+        Open: "󰄱",
+        Active: "",
+        Cancelled: "󰰱",
+        Warning: "",
+        Completed: "",
+        Comment: "•",
+        Xp: "");
 
     public string GlyphFor(QuestStatus status) => status switch
     {

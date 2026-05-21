@@ -17,7 +17,7 @@ public sealed class ChangeTrackingPipeline
         _renderer = new DiffRenderer(theme);
     }
 
-    public void RunAfter(JournalDocument currentDoc, string journalPath, bool writeSnapshot)
+    public PipelineResult RunAfter(JournalDocument currentDoc, string journalPath, bool writeSnapshot)
     {
         var prior = _store.Load();
 
@@ -25,26 +25,22 @@ public sealed class ChangeTrackingPipeline
             && string.Equals(prior.JournalPath, journalPath, StringComparison.Ordinal);
         var basis = samePath ? prior : null;
 
-        var changes = _detector.Detect(basis, currentDoc);
+        var changes = basis is null ? ChangeSet.Empty : _detector.Detect(basis, currentDoc);
+        var xpAwarded = XpCalculator.Award(changes);
+        var newTotal = (prior?.TotalXp ?? 0) + xpAwarded;
 
-        var isFirstSnapshotForThisJournal = basis is null;
-        if (!isFirstSnapshotForThisJournal)
-        {
-            var xpAwarded = XpCalculator.Award(changes);
-            var newTotal = (prior?.TotalXp ?? 0) + xpAwarded;
-            _renderer.Render(changes, xpAwarded, newTotal);
+        _renderer.RenderDiffTree(changes);
 
-            if (writeSnapshot)
-            {
-                var nextSnapshot = JournalSnapshot.FromDocument(currentDoc, journalPath, newTotal);
-                _store.Save(nextSnapshot);
-            }
-        }
-        else if (writeSnapshot)
+        if (writeSnapshot)
         {
-            var initialTotal = prior?.TotalXp ?? 0;
-            var nextSnapshot = JournalSnapshot.FromDocument(currentDoc, journalPath, initialTotal);
-            _store.Save(nextSnapshot);
+            _store.Save(JournalSnapshot.FromDocument(currentDoc, journalPath, newTotal));
         }
+
+        return new PipelineResult(xpAwarded, newTotal, HasChanges: !changes.IsEmpty);
     }
+
+    public void RenderXpFooter(PipelineResult result) =>
+        _renderer.RenderXpFooter(result.XpAwarded, result.TotalXp);
 }
+
+public sealed record PipelineResult(long XpAwarded, long TotalXp, bool HasChanges);
