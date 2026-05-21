@@ -19,11 +19,11 @@ public sealed record GlyphTheme(
         Comment: "•");
 
     public static GlyphTheme NerdFont { get; } = new(
-        Open: "\U000F0131",   // 󰄱
-        Active: "",     //
-        Cancelled: "\U000F0C31", // 󰰱
+        Open: "󰄱",   // 󰄱
+        Active: "",     //
+        Cancelled: "󰰱", // 󰰱
         Warning: "",    //
-        Completed: "",  //
+        Completed: "",  //
         Comment: "•");
 
     public string GlyphFor(QuestStatus status) => status switch

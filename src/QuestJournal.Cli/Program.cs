@@ -12,6 +12,7 @@ try
     return args[0] switch
     {
         "status" => new StatusCommand().Run(args[1..]),
+        "edit" => new EditCommand().Run(args[1..]),
         _ => UnknownCommand(args[0]),
     };
 }
@@ -35,4 +36,6 @@ static void PrintHelp()
     AnsiConsole.MarkupLine("Commands:");
     AnsiConsole.MarkupLine("  [yellow]status[/] [[day]] [[-a|--all]] [[--file <path>]]");
     AnsiConsole.MarkupLine("    Print top-level quests for a day (default: TODAY).");
+    AnsiConsole.MarkupLine("  [yellow]edit[/]");
+    AnsiConsole.MarkupLine("    Open the configured journal in $EDITOR. For nvim, drops a bundled .nvim.lua next to the journal if missing.");
 }
