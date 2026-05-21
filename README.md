@@ -44,3 +44,6 @@
     - `- [x]` - completed
     - `- `    - simple bullet, often just a comment related to the parent
     - Each of these possible task statuses can be nested within other tasks
+
+## XP
+- Most actions involving tasks will give you XP, especially completing tasks. XP is just for fun, nothing to do but to collect it. XP is tracked and diff calculated whenever you run a `quest` command.
