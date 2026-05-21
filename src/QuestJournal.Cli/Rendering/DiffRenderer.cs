@@ -45,16 +45,17 @@ public sealed class DiffRenderer
         AnsiConsole.WriteLine();
     }
 
-    public void RenderXpFooter(long xpAwarded, long totalXp)
+    public void RenderXpFooter(long xpAwarded, long todayXp, long totalXp)
     {
         var sparkle = $"[yellow1]{Markup.Escape(_theme.Xp)}[/]";
+        var tally = $"[yellow1]{todayXp} today[/]  [yellow1]{totalXp} lifetime[/]";
         if (xpAwarded > 0)
         {
-            AnsiConsole.MarkupLine($"[green]+{xpAwarded}XP earned[/]! {sparkle} [yellow1]{totalXp} total[/]");
+            AnsiConsole.MarkupLine($"[green]+{xpAwarded}XP earned[/]! {sparkle} {tally}");
         }
         else
         {
-            AnsiConsole.MarkupLine($"{sparkle} [yellow1]{totalXp} total[/]");
+            AnsiConsole.MarkupLine($"{sparkle} {tally}");
         }
     }
 

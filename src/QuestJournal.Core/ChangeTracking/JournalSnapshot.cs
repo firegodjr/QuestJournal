@@ -9,15 +9,27 @@ public sealed class JournalSnapshot
     public string JournalPath { get; set; } = string.Empty;
     public DateTimeOffset CapturedAt { get; set; }
     public long TotalXp { get; set; }
+    public long TodayXp { get; set; }
+    public string TodayDate { get; set; } = string.Empty;
     public List<SnapshotTask> Tasks { get; set; } = new();
 
     public static JournalSnapshot FromDocument(JournalDocument doc, string journalPath, long totalXp)
+        => FromDocument(doc, journalPath, totalXp, todayXp: 0, todayDate: string.Empty);
+
+    public static JournalSnapshot FromDocument(
+        JournalDocument doc,
+        string journalPath,
+        long totalXp,
+        long todayXp,
+        string todayDate)
     {
         var snapshot = new JournalSnapshot
         {
             JournalPath = journalPath,
             CapturedAt = DateTimeOffset.UtcNow,
             TotalXp = totalXp,
+            TodayXp = todayXp,
+            TodayDate = todayDate,
         };
 
         foreach (var (key, status) in EnumerateTasks(doc))

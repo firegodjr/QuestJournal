@@ -17,7 +17,11 @@ public sealed class ChangeTrackingPipeline
         _renderer = new DiffRenderer(theme);
     }
 
-    public PipelineResult RunAfter(JournalDocument currentDoc, string journalPath, bool writeSnapshot)
+    public PipelineResult RunAfter(
+        JournalDocument currentDoc,
+        string journalPath,
+        bool writeSnapshot,
+        bool renderDiff = true)
     {
         var prior = _store.Load();
 
@@ -29,18 +33,27 @@ public sealed class ChangeTrackingPipeline
         var xpAwarded = XpCalculator.Award(changes);
         var newTotal = (prior?.TotalXp ?? 0) + xpAwarded;
 
-        _renderer.RenderDiffTree(changes);
+        var todayKey = XpBucket.TodayKey();
+        var priorTodayXp = prior?.TodayXp ?? 0;
+        var priorTodayDate = prior?.TodayDate ?? string.Empty;
+        var newTodayXp = XpBucket.Roll(priorTodayXp, priorTodayDate, todayKey, xpAwarded);
+
+        if (renderDiff)
+        {
+            _renderer.RenderDiffTree(changes);
+        }
 
         if (writeSnapshot)
         {
-            _store.Save(JournalSnapshot.FromDocument(currentDoc, journalPath, newTotal));
+            _store.Save(JournalSnapshot.FromDocument(
+                currentDoc, journalPath, newTotal, newTodayXp, todayKey));
         }
 
-        return new PipelineResult(xpAwarded, newTotal, HasChanges: !changes.IsEmpty);
+        return new PipelineResult(xpAwarded, newTodayXp, newTotal, HasChanges: !changes.IsEmpty);
     }
 
     public void RenderXpFooter(PipelineResult result) =>
-        _renderer.RenderXpFooter(result.XpAwarded, result.TotalXp);
+        _renderer.RenderXpFooter(result.XpAwarded, result.TodayXp, result.TotalXp);
 }
 
-public sealed record PipelineResult(long XpAwarded, long TotalXp, bool HasChanges);
+public sealed record PipelineResult(long XpAwarded, long TodayXp, long TotalXp, bool HasChanges);

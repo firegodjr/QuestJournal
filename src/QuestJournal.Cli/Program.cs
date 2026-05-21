@@ -13,6 +13,7 @@ try
     {
         "status" => new StatusCommand().Run(args[1..]),
         "edit" => new EditCommand().Run(args[1..]),
+        "xp" => new XpCommand().Run(args[1..]),
         _ => UnknownCommand(args[0]),
     };
 }
@@ -38,4 +39,6 @@ static void PrintHelp()
     AnsiConsole.MarkupLine("    Print top-level quests for a day (default: TODAY).");
     AnsiConsole.MarkupLine("  [yellow]edit[/]");
     AnsiConsole.MarkupLine("    Open the configured journal in $EDITOR. For nvim, drops a bundled .nvim.lua next to the journal if missing.");
+    AnsiConsole.MarkupLine("  [yellow]xp[/] [[--format=today|lifetime|full]]");
+    AnsiConsole.MarkupLine("    Show XP. Default 'full' prints the footer line; 'today' or 'lifetime' print a single integer.");
 }
