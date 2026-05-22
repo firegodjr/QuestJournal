@@ -58,15 +58,19 @@ public class ChangeDetectorTests
     }
 
     [Fact]
-    public void Parent_text_edit_appears_as_remove_plus_add_for_parent_and_descendants()
+    public void Parent_text_edit_only_reports_parent_change()
     {
         var prior = Parse("# TODAY\n## MAINQUESTS\n- [ ] old name\n\t- [ ] child\n");
         var current = Parse("# TODAY\n## MAINQUESTS\n- [ ] new name\n\t- [ ] child\n");
         var changes = new ChangeDetector().Detect(SnapshotOf(prior), current);
 
-        Assert.Equal(4, changes.Changes.Count);
-        Assert.Equal(2, changes.Changes.OfType<Change.Added>().Count());
-        Assert.Equal(2, changes.Changes.OfType<Change.Removed>().Count());
+        // The child's own text is unchanged across snapshots, so it collapses out.
+        // Only the parent's text edit surfaces, as a Remove + Add pair.
+        Assert.Equal(2, changes.Changes.Count);
+        var added = Assert.Single(changes.Changes.OfType<Change.Added>());
+        var removed = Assert.Single(changes.Changes.OfType<Change.Removed>());
+        Assert.Equal("new name", added.Key.Text);
+        Assert.Equal("old name", removed.Key.Text);
     }
 
     [Fact]
@@ -140,26 +144,107 @@ public class ChangeDetectorTests
     }
 
     [Fact]
-    public void Move_to_non_yesterday_day_does_not_collapse()
+    public void Move_to_non_yesterday_day_with_status_change_emits_StatusChanged()
     {
         var prior = Parse("# TODAY\n## MAINQUESTS\n- [ ] gamma\n# TOMORROW\n## MAINQUESTS\n");
         var current = Parse("# TODAY\n## MAINQUESTS\n# TOMORROW\n## MAINQUESTS\n- [x] gamma\n");
         var changes = new ChangeDetector().Detect(SnapshotOf(prior), current);
 
-        Assert.Equal(2, changes.Changes.Count);
-        Assert.Single(changes.Changes.OfType<Change.Added>());
-        Assert.Single(changes.Changes.OfType<Change.Removed>());
+        var change = Assert.Single(changes.Changes);
+        var sc = Assert.IsType<Change.StatusChanged>(change);
+        Assert.Equal("gamma", sc.Key.Text);
+        Assert.Equal("TOMORROW", sc.Key.Day);
+        Assert.Equal(QuestStatus.Open, sc.OldStatus);
+        Assert.Equal(QuestStatus.Completed, sc.NewStatus);
     }
 
     [Fact]
-    public void Same_status_move_to_yesterday_does_not_collapse()
+    public void Same_status_move_to_yesterday_emits_nothing()
     {
         var prior = Parse("# TODAY\n## MAINQUESTS\n- [x] zeta\n# YESTERDAY\n## MAINQUESTS\n");
         var current = Parse("# TODAY\n## MAINQUESTS\n# YESTERDAY\n## MAINQUESTS\n- [x] zeta\n");
         var changes = new ChangeDetector().Detect(SnapshotOf(prior), current);
 
+        Assert.True(changes.IsEmpty);
+    }
+
+    [Fact]
+    public void Indent_within_same_day_and_category_emits_nothing()
+    {
+        var prior = Parse("# TODAY\n## MAINQUESTS\n- [ ] parent\n- [ ] child\n");
+        var current = Parse("# TODAY\n## MAINQUESTS\n- [ ] parent\n\t- [ ] child\n");
+        var changes = new ChangeDetector().Detect(SnapshotOf(prior), current);
+
+        Assert.True(changes.IsEmpty);
+    }
+
+    [Fact]
+    public void Unindent_within_same_day_and_category_emits_nothing()
+    {
+        var prior = Parse("# TODAY\n## MAINQUESTS\n- [ ] parent\n\t- [ ] child\n");
+        var current = Parse("# TODAY\n## MAINQUESTS\n- [ ] parent\n- [ ] child\n");
+        var changes = new ChangeDetector().Detect(SnapshotOf(prior), current);
+
+        Assert.True(changes.IsEmpty);
+    }
+
+    [Fact]
+    public void Indent_with_status_change_emits_single_StatusChanged()
+    {
+        var prior = Parse("# TODAY\n## MAINQUESTS\n- [ ] parent\n- [ ] child\n");
+        var current = Parse("# TODAY\n## MAINQUESTS\n- [ ] parent\n\t- [x] child\n");
+        var changes = new ChangeDetector().Detect(SnapshotOf(prior), current);
+
+        var change = Assert.Single(changes.Changes);
+        var sc = Assert.IsType<Change.StatusChanged>(change);
+        Assert.Equal("child", sc.Key.Text);
+        Assert.Equal(new[] { "parent" }, sc.Key.Ancestors.ToArray());
+        Assert.Equal(QuestStatus.Open, sc.OldStatus);
+        Assert.Equal(QuestStatus.Completed, sc.NewStatus);
+    }
+
+    [Fact]
+    public void Cross_day_move_same_status_emits_nothing()
+    {
+        var prior = Parse("# TODAY\n## MAINQUESTS\n- [ ] eta\n# TOMORROW\n## MAINQUESTS\n");
+        var current = Parse("# TODAY\n## MAINQUESTS\n# TOMORROW\n## MAINQUESTS\n- [ ] eta\n");
+        var changes = new ChangeDetector().Detect(SnapshotOf(prior), current);
+
+        Assert.True(changes.IsEmpty);
+    }
+
+    [Fact]
+    public void Reindent_multiple_levels_emits_nothing()
+    {
+        var prior = Parse("# TODAY\n## MAINQUESTS\n- [ ] alpha\n\t- [ ] theta\n");
+        var current = Parse("# TODAY\n## MAINQUESTS\n- [ ] alpha\n- [ ] beta\n\t- [ ] gamma\n\t\t- [ ] theta\n");
+        var changes = new ChangeDetector().Detect(SnapshotOf(prior), current);
+
+        // theta moved from depth 1 to depth 3 under a different ancestor chain.
+        // beta and gamma are genuinely new.
         Assert.Equal(2, changes.Changes.Count);
-        Assert.Single(changes.Changes.OfType<Change.Added>());
-        Assert.Single(changes.Changes.OfType<Change.Removed>());
+        Assert.All(changes.Changes, c => Assert.IsType<Change.Added>(c));
+        var texts = changes.Changes.OfType<Change.Added>().Select(a => a.Key.Text).OrderBy(t => t).ToArray();
+        Assert.Equal(new[] { "beta", "gamma" }, texts);
+    }
+
+    [Fact]
+    public void Cross_category_move_same_status_emits_nothing()
+    {
+        var prior = Parse("# TODAY\n## MAINQUESTS\n- [ ] iota\n## SIDEQUESTS\n");
+        var current = Parse("# TODAY\n## MAINQUESTS\n## SIDEQUESTS\n- [ ] iota\n");
+        var changes = new ChangeDetector().Detect(SnapshotOf(prior), current);
+
+        Assert.True(changes.IsEmpty);
+    }
+
+    [Fact]
+    public void Two_siblings_same_text_under_different_parents_one_reindented_pairs_FIFO()
+    {
+        var prior = Parse("# TODAY\n## MAINQUESTS\n- [ ] parentA\n\t- [ ] dup\n- [ ] parentB\n\t- [ ] dup\n");
+        var current = Parse("# TODAY\n## MAINQUESTS\n- [ ] parentA\n\t- [ ] dup\n- [ ] parentB\n- [ ] dup\n");
+        var changes = new ChangeDetector().Detect(SnapshotOf(prior), current);
+
+        Assert.True(changes.IsEmpty);
     }
 }
