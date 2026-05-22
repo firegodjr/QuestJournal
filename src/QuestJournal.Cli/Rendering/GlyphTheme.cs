@@ -2,41 +2,14 @@ using QuestJournal.Core.Model;
 
 namespace QuestJournal.Cli.Rendering;
 
-public sealed record GlyphTheme(
-    string Open,
-    string Active,
-    string Cancelled,
-    string Warning,
-    string Completed,
-    string Comment,
-    string Xp)
+public sealed record GlyphTheme(bool UseNerdFont, string Xp)
 {
-    public static GlyphTheme Ascii { get; } = new(
-        Open: "[ ]",
-        Active: "[>]",
-        Cancelled: "[~]",
-        Warning: "[!]",
-        Completed: "[x]",
-        Comment: "•",
-        Xp: "❈");
+    public static GlyphTheme Ascii { get; } = new(UseNerdFont: false, Xp: "❈");
+    public static GlyphTheme NerdFont { get; } = new(UseNerdFont: true, Xp: "");
 
-    public static GlyphTheme NerdFont { get; } = new(
-        Open: "󰄱",
-        Active: "",
-        Cancelled: "󰰱",
-        Warning: "",
-        Completed: "",
-        Comment: "•",
-        Xp: "");
-
-    public string GlyphFor(QuestStatus status) => status switch
+    public string GlyphFor(QuestStatus status)
     {
-        QuestStatus.Open => Open,
-        QuestStatus.Active => Active,
-        QuestStatus.Cancelled => Cancelled,
-        QuestStatus.Warning => Warning,
-        QuestStatus.Completed => Completed,
-        QuestStatus.Comment => Comment,
-        _ => " ",
-    };
+        var presentation = StatusPresentations.For(status);
+        return UseNerdFont ? presentation.NerdGlyph : presentation.AsciiGlyph;
+    }
 }

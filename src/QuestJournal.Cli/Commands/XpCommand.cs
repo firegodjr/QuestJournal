@@ -1,12 +1,8 @@
-using QuestJournal.Cli.ChangeTracking;
-using QuestJournal.Cli.Rendering;
-using QuestJournal.Core.Configuration;
-using QuestJournal.Core.Parsing;
 using Spectre.Console;
 
 namespace QuestJournal.Cli.Commands;
 
-public sealed class XpCommand
+public sealed class XpCommand : ICommand
 {
     private enum Format { Full, Today, Lifetime }
 
@@ -51,20 +47,10 @@ public sealed class XpCommand
             }
         }
 
-        var config = LoadConfig();
-        var filePath = config.FilePath;
-        if (!File.Exists(filePath))
-        {
-            AnsiConsole.MarkupLine($"[red]File not found:[/] {Markup.Escape(filePath)}");
-            return 1;
-        }
-
-        var doc = new JournalParser().ParseFile(filePath);
-        var theme = config.NerdFontGlyphs ? GlyphTheme.NerdFont : GlyphTheme.Ascii;
-        var pipeline = new ChangeTrackingPipeline(theme);
-        var result = pipeline.RunAfter(
-            doc,
-            journalPath: filePath,
+        var session = JournalSession.Open(fileOverride: null, requireConfig: false);
+        var result = session.Pipeline.RunAfter(
+            session.Document,
+            journalPath: session.FilePath,
             writeSnapshot: true,
             renderDiff: format == Format.Full);
 
@@ -77,23 +63,10 @@ public sealed class XpCommand
                 Console.WriteLine(result.TotalXp);
                 break;
             case Format.Full:
-                pipeline.RenderXpFooter(result);
+                session.Pipeline.RenderXpFooter(result);
                 break;
         }
 
         return 0;
-    }
-
-    private static Config LoadConfig()
-    {
-        try
-        {
-            return new ConfigStore().Load();
-        }
-        catch (ConfigMissingException ex)
-        {
-            AnsiConsole.MarkupLine($"[yellow]Config:[/] {Markup.Escape(ex.Message)}");
-            return new Config();
-        }
     }
 }

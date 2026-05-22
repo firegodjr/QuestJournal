@@ -124,17 +124,8 @@ public sealed class DiffRenderer
         };
     }
 
-    private static string StatusLabel(QuestStatus status) => status switch
-    {
-        QuestStatus.None => "None",
-        QuestStatus.Open => "Open",
-        QuestStatus.Active => "Active",
-        QuestStatus.Cancelled => "Cancelled",
-        QuestStatus.Warning => "Warning",
-        QuestStatus.Completed => "Completed",
-        QuestStatus.Comment => "Comment",
-        _ => status.ToString(),
-    };
+    private static string StatusLabel(QuestStatus status) =>
+        StatusPresentations.For(status).Label;
 
     private sealed class TrieNode
     {

@@ -1,13 +1,10 @@
-using QuestJournal.Cli.ChangeTracking;
 using QuestJournal.Cli.Rendering;
-using QuestJournal.Core.Configuration;
 using QuestJournal.Core.Model;
-using QuestJournal.Core.Parsing;
 using Spectre.Console;
 
 namespace QuestJournal.Cli.Commands;
 
-public sealed class StatusCommand
+public sealed class StatusCommand : ICommand
 {
     public int Run(string[] args)
     {
@@ -50,51 +47,40 @@ public sealed class StatusCommand
             }
         }
 
-        var config = LoadConfig();
-        var filePath = fileOverride ?? config.FilePath;
-        if (!File.Exists(filePath))
-        {
-            AnsiConsole.MarkupLine($"[red]File not found:[/] {Markup.Escape(filePath)}");
-            return 1;
-        }
-
-        var doc = new JournalParser().ParseFile(filePath);
-        var theme = config.NerdFontGlyphs ? GlyphTheme.NerdFont : GlyphTheme.Ascii;
-        var renderer = new StatusRenderer(theme);
-
-        var pipeline = new ChangeTrackingPipeline(theme);
-        var trackingResult = pipeline.RunAfter(
-            doc,
-            journalPath: filePath,
-            writeSnapshot: fileOverride is null);
+        var session = JournalSession.Open(fileOverride, requireConfig: false);
+        var renderer = new StatusRenderer(session.Theme);
+        var trackingResult = session.Pipeline.RunAfter(
+            session.Document,
+            journalPath: session.FilePath,
+            writeSnapshot: !session.FileOverridden);
 
         IEnumerable<DaySection> targets;
         if (all)
         {
-            targets = doc.Days;
+            targets = session.Document.Days;
         }
         else if (dayArg is not null)
         {
-            var match = doc.Days.FirstOrDefault(d =>
+            var match = session.Document.Days.FirstOrDefault(d =>
                 string.Equals(d.Name, dayArg, StringComparison.OrdinalIgnoreCase));
             if (match is null)
             {
                 AnsiConsole.MarkupLine(
                     $"[red]Error:[/] no section named '{Markup.Escape(dayArg)}' in journal. " +
-                    $"Found: {Markup.Escape(string.Join(", ", doc.Days.Select(d => d.Name)))}");
+                    $"Found: {Markup.Escape(string.Join(", ", session.Document.Days.Select(d => d.Name)))}");
                 return 2;
             }
             targets = new[] { match };
         }
         else
         {
-            var today = doc.Days.FirstOrDefault(d =>
+            var today = session.Document.Days.FirstOrDefault(d =>
                 string.Equals(d.Name, "TODAY", StringComparison.OrdinalIgnoreCase));
             if (today is null)
             {
                 AnsiConsole.MarkupLine(
                     "[red]Error:[/] no section named 'TODAY' in journal. " +
-                    $"Found: {Markup.Escape(string.Join(", ", doc.Days.Select(d => d.Name)))}");
+                    $"Found: {Markup.Escape(string.Join(", ", session.Document.Days.Select(d => d.Name)))}");
                 return 2;
             }
             targets = new[] { today };
@@ -109,21 +95,8 @@ public sealed class StatusCommand
         }
 
         AnsiConsole.WriteLine();
-        pipeline.RenderXpFooter(trackingResult);
+        session.Pipeline.RenderXpFooter(trackingResult);
 
         return 0;
-    }
-
-    private static Config LoadConfig()
-    {
-        try
-        {
-            return new ConfigStore().Load();
-        }
-        catch (ConfigMissingException ex)
-        {
-            AnsiConsole.MarkupLine($"[yellow]Config:[/] {Markup.Escape(ex.Message)}");
-            return new Config();
-        }
     }
 }

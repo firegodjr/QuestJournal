@@ -1,32 +1,41 @@
 using QuestJournal.Cli.Commands;
 using Spectre.Console;
 
+var commands = new Dictionary<string, ICommand>(StringComparer.OrdinalIgnoreCase)
+{
+    ["status"] = new StatusCommand(),
+    ["edit"] = new EditCommand(),
+    ["xp"] = new XpCommand(),
+};
+
 if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
 {
     PrintHelp();
     return 0;
 }
 
+if (!commands.TryGetValue(args[0], out var command))
+{
+    AnsiConsole.MarkupLine($"[red]Unknown command:[/] {Markup.Escape(args[0])}");
+    PrintHelp();
+    return 1;
+}
+
 try
 {
-    return args[0] switch
+    return command.Run(args[1..]);
+}
+catch (JournalSessionException ex)
+{
+    if (!ex.Reported)
     {
-        "status" => new StatusCommand().Run(args[1..]),
-        "edit" => new EditCommand().Run(args[1..]),
-        "xp" => new XpCommand().Run(args[1..]),
-        _ => UnknownCommand(args[0]),
-    };
+        AnsiConsole.MarkupLine($"[red]Error:[/] {Markup.Escape(ex.Message)}");
+    }
+    return ex.ExitCode;
 }
 catch (Exception ex)
 {
     AnsiConsole.MarkupLine($"[red]Error:[/] {Markup.Escape(ex.Message)}");
-    return 1;
-}
-
-static int UnknownCommand(string name)
-{
-    AnsiConsole.MarkupLine($"[red]Unknown command:[/] {Markup.Escape(name)}");
-    PrintHelp();
     return 1;
 }
 

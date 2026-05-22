@@ -111,15 +111,7 @@ public sealed class JournalParser
         return depth;
     }
 
-    private static QuestStatus MapMark(string mark) => mark switch
-    {
-        " " => QuestStatus.Open,
-        ">" => QuestStatus.Active,
-        "~" => QuestStatus.Cancelled,
-        "!" => QuestStatus.Warning,
-        "x" or "X" => QuestStatus.Completed,
-        _ => QuestStatus.Comment,
-    };
+    private static QuestStatus MapMark(string mark) => QuestStatusMarks.FromMark(mark);
 
     private static void CloseCategory(DayBuilder? day, CategoryBuilder? cat)
     {

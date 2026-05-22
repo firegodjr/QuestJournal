@@ -1,4 +1,5 @@
 using System.Text.Json;
+using QuestJournal.Core.IO;
 
 namespace QuestJournal.Core.Configuration;
 
@@ -18,9 +19,7 @@ public sealed class ConfigStore
     }
 
     public static string DefaultPath() =>
-        Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            ".config", "quest-journal", "config.json");
+        Path.Combine(XdgPaths.ConfigHome(), "quest-journal", "config.json");
 
     public Config Load()
     {

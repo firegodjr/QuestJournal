@@ -1,33 +1,14 @@
 using System.Diagnostics;
-using QuestJournal.Cli.ChangeTracking;
-using QuestJournal.Cli.Rendering;
-using QuestJournal.Core.Configuration;
 using QuestJournal.Core.Parsing;
 using Spectre.Console;
 
 namespace QuestJournal.Cli.Commands;
 
-public sealed class EditCommand
+public sealed class EditCommand : ICommand
 {
     public int Run(string[] args)
     {
-        Config config;
-        try
-        {
-            config = new ConfigStore().Load();
-        }
-        catch (ConfigMissingException ex)
-        {
-            AnsiConsole.MarkupLine($"[red]Config:[/] {Markup.Escape(ex.Message)}");
-            return 1;
-        }
-
-        var filePath = config.FilePath;
-        if (!File.Exists(filePath))
-        {
-            AnsiConsole.MarkupLine($"[red]File not found:[/] {Markup.Escape(filePath)}");
-            return 1;
-        }
+        var session = JournalSession.Open(fileOverride: null, requireConfig: true);
 
         var editor = Environment.GetEnvironmentVariable("EDITOR");
         if (string.IsNullOrWhiteSpace(editor))
@@ -36,7 +17,7 @@ public sealed class EditCommand
             return 1;
         }
 
-        var questlogDir = Path.GetDirectoryName(filePath)!;
+        var questlogDir = Path.GetDirectoryName(session.FilePath)!;
 
         if (string.Equals(Path.GetFileName(editor), "nvim", StringComparison.Ordinal))
         {
@@ -55,7 +36,7 @@ public sealed class EditCommand
             }
         }
 
-        var psi = new ProcessStartInfo(editor, $"\"{filePath}\"")
+        var psi = new ProcessStartInfo(editor, $"\"{session.FilePath}\"")
         {
             WorkingDirectory = questlogDir,
             UseShellExecute = false,
@@ -70,15 +51,13 @@ public sealed class EditCommand
         proc.WaitForExit();
         var exitCode = proc.ExitCode;
 
-        if (File.Exists(filePath))
+        if (File.Exists(session.FilePath))
         {
-            var doc = new JournalParser().ParseFile(filePath);
-            var theme = config.NerdFontGlyphs ? GlyphTheme.NerdFont : GlyphTheme.Ascii;
-            var pipeline = new ChangeTrackingPipeline(theme);
-            var result = pipeline.RunAfter(doc, filePath, writeSnapshot: true);
+            var doc = new JournalParser().ParseFile(session.FilePath);
+            var result = session.Pipeline.RunAfter(doc, session.FilePath, writeSnapshot: true);
             if (result.HasChanges)
             {
-                pipeline.RenderXpFooter(result);
+                session.Pipeline.RenderXpFooter(result);
             }
         }
 

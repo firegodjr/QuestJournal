@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using QuestJournal.Core.IO;
 
 namespace QuestJournal.Core.ChangeTracking;
 
@@ -20,17 +21,8 @@ public sealed class SnapshotStore
         SnapshotPath = snapshotPath ?? DefaultPath();
     }
 
-    public static string DefaultPath()
-    {
-        var dataHome = Environment.GetEnvironmentVariable("XDG_DATA_HOME");
-        if (string.IsNullOrWhiteSpace(dataHome))
-        {
-            dataHome = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                ".local", "share");
-        }
-        return Path.Combine(dataHome, "quest-journal", "state.json");
-    }
+    public static string DefaultPath() =>
+        Path.Combine(XdgPaths.DataHome(), "quest-journal", "state.json");
 
     public JournalSnapshot? Load()
     {
