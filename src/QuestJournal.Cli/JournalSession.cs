@@ -1,10 +1,10 @@
 using QuestJournal.Cli.ChangeTracking;
 using QuestJournal.Cli.Commands;
+using QuestJournal.Cli.IO;
 using QuestJournal.Cli.Rendering;
 using QuestJournal.Core.Configuration;
 using QuestJournal.Core.Model;
 using QuestJournal.Core.Parsing;
-using Spectre.Console;
 
 namespace QuestJournal.Cli;
 
@@ -14,7 +14,7 @@ public sealed class JournalSession
     public string FilePath { get; }
     public bool FileOverridden { get; }
     public JournalDocument Document { get; }
-    public GlyphTheme Theme { get; }
+    public QuestTheme Theme { get; }
     public ChangeTrackingPipeline Pipeline { get; }
 
     private JournalSession(
@@ -22,7 +22,7 @@ public sealed class JournalSession
         string filePath,
         bool fileOverridden,
         JournalDocument document,
-        GlyphTheme theme,
+        QuestTheme theme,
         ChangeTrackingPipeline pipeline)
     {
         Config = config;
@@ -40,12 +40,12 @@ public sealed class JournalSession
 
         if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
         {
-            AnsiConsole.MarkupLine($"[red]File not found:[/] {Markup.Escape(filePath ?? string.Empty)}");
+            ConsoleReporter.Error("File not found", filePath ?? string.Empty);
             throw new JournalSessionException(reported: true);
         }
 
         var document = new JournalParser().ParseFile(filePath);
-        var theme = config.NerdFontGlyphs ? GlyphTheme.NerdFont : GlyphTheme.Ascii;
+        var theme = config.NerdFontGlyphs ? QuestTheme.NerdFont : QuestTheme.Ascii;
         var pipeline = new ChangeTrackingPipeline(theme);
 
         return new JournalSession(config, filePath, fileOverride is not null, document, theme, pipeline);
@@ -61,10 +61,10 @@ public sealed class JournalSession
         {
             if (requireConfig)
             {
-                AnsiConsole.MarkupLine($"[red]Config:[/] {Markup.Escape(ex.Message)}");
+                ConsoleReporter.Error("Config", ex.Message);
                 throw new JournalSessionException(reported: true);
             }
-            AnsiConsole.MarkupLine($"[yellow]Config:[/] {Markup.Escape(ex.Message)}");
+            ConsoleReporter.Warn("Config", ex.Message);
             return new Config();
         }
     }

@@ -6,9 +6,9 @@ namespace QuestJournal.Cli.Rendering;
 
 public sealed class DiffRenderer
 {
-    private readonly GlyphTheme _theme;
+    private readonly QuestTheme _theme;
 
-    public DiffRenderer(GlyphTheme theme)
+    public DiffRenderer(QuestTheme theme)
     {
         _theme = theme;
     }
@@ -33,10 +33,10 @@ public sealed class DiffRenderer
 
         foreach (var dayGroup in grouped.GroupBy(g => g.Key.Day))
         {
-            var dayNode = root.AddNode($"[bold]# {Markup.Escape(dayGroup.Key)}[/]");
+            var dayNode = root.AddNode(QuestTheme.DayHeader(dayGroup.Key));
             foreach (var entry in dayGroup)
             {
-                var catNode = dayNode.AddNode($"[bold dim]## {Markup.Escape(entry.Key.Category)}[/]");
+                var catNode = dayNode.AddNode(QuestTheme.CategoryHeader(entry.Key.Category));
                 BuildAndEmit(catNode, entry.Value);
             }
         }
@@ -47,7 +47,7 @@ public sealed class DiffRenderer
 
     public void RenderXpFooter(long xpAwarded, long todayXp, long totalXp)
     {
-        var sparkle = $"[yellow1]{Markup.Escape(_theme.Xp)}[/]";
+        var sparkle = $"[yellow1]{Markup.Escape(_theme.XpGlyph)}[/]";
         var tally = $"[yellow1]{todayXp} today[/]  [yellow1]{totalXp} lifetime[/]";
         if (xpAwarded > 0)
         {
@@ -109,23 +109,20 @@ public sealed class DiffRenderer
         return node.Change switch
         {
             Change.Added a =>
-                $"[green]+[/] {QuestStyles.StyleGlyph(a.Status, _theme.GlyphFor(a.Status))} " +
-                $"{QuestStyles.StyleText(a.Status, name)}{xpSuffix}",
+                $"[green]+[/] {_theme.StyledGlyph(a.Status)} " +
+                $"{_theme.StyledText(a.Status, name)}{xpSuffix}",
 
             Change.Removed =>
                 $"[grey strikethrough]- {Markup.Escape(name)}[/] [dim](removed)[/]",
 
             Change.StatusChanged sc =>
-                $"{QuestStyles.StyleGlyph(sc.NewStatus, _theme.GlyphFor(sc.NewStatus))} " +
-                $"{QuestStyles.StyleText(sc.NewStatus, name)} " +
-                $"[dim]({StatusLabel(sc.OldStatus)} → {StatusLabel(sc.NewStatus)})[/]{xpSuffix}",
+                $"{_theme.StyledGlyph(sc.NewStatus)} " +
+                $"{_theme.StyledText(sc.NewStatus, name)} " +
+                $"[dim]({_theme.Label(sc.OldStatus)} → {_theme.Label(sc.NewStatus)})[/]{xpSuffix}",
 
             _ => Markup.Escape(name),
         };
     }
-
-    private static string StatusLabel(QuestStatus status) =>
-        StatusPresentations.For(status).Label;
 
     private sealed class TrieNode
     {

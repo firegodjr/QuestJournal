@@ -2,6 +2,8 @@ namespace QuestJournal.Core.IO;
 
 internal static class XdgPaths
 {
+    public const string AppDirectory = "quest-journal";
+
     public static string ConfigHome() => Resolve("XDG_CONFIG_HOME", ".config");
 
     public static string DataHome() => Resolve("XDG_DATA_HOME", Path.Combine(".local", "share"));

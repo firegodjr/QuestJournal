@@ -1,4 +1,5 @@
 using QuestJournal.Cli.Commands;
+using QuestJournal.Cli.IO;
 using Spectre.Console;
 
 var commands = new Dictionary<string, ICommand>(StringComparer.OrdinalIgnoreCase)
@@ -16,7 +17,7 @@ if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
 
 if (!commands.TryGetValue(args[0], out var command))
 {
-    AnsiConsole.MarkupLine($"[red]Unknown command:[/] {Markup.Escape(args[0])}");
+    ConsoleReporter.Error("Unknown command", args[0]);
     PrintHelp();
     return 1;
 }
@@ -29,13 +30,13 @@ catch (JournalSessionException ex)
 {
     if (!ex.Reported)
     {
-        AnsiConsole.MarkupLine($"[red]Error:[/] {Markup.Escape(ex.Message)}");
+        ConsoleReporter.Error("Error", ex.Message);
     }
     return ex.ExitCode;
 }
 catch (Exception ex)
 {
-    AnsiConsole.MarkupLine($"[red]Error:[/] {Markup.Escape(ex.Message)}");
+    ConsoleReporter.Error("Error", ex.Message);
     return 1;
 }
 

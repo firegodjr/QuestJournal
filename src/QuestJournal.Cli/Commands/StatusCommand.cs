@@ -1,3 +1,4 @@
+using QuestJournal.Cli.IO;
 using QuestJournal.Cli.Rendering;
 using QuestJournal.Core.Model;
 using Spectre.Console;
@@ -24,7 +25,7 @@ public sealed class StatusCommand : ICommand
                 case "--file":
                     if (i + 1 >= args.Length)
                     {
-                        AnsiConsole.MarkupLine("[red]--file requires a path argument.[/]");
+                        ConsoleReporter.ErrorLine("--file requires a path argument.");
                         return 1;
                     }
                     fileOverride = args[++i];
@@ -40,7 +41,7 @@ public sealed class StatusCommand : ICommand
                     }
                     else
                     {
-                        AnsiConsole.MarkupLine($"[red]Unexpected argument:[/] {Markup.Escape(a)}");
+                        ConsoleReporter.Error("Unexpected argument", a);
                         return 1;
                     }
                     break;
@@ -59,31 +60,19 @@ public sealed class StatusCommand : ICommand
         {
             targets = session.Document.Days;
         }
-        else if (dayArg is not null)
+        else
         {
+            var searchName = dayArg ?? "TODAY";
             var match = session.Document.Days.FirstOrDefault(d =>
-                string.Equals(d.Name, dayArg, StringComparison.OrdinalIgnoreCase));
+                string.Equals(d.Name, searchName, StringComparison.OrdinalIgnoreCase));
             if (match is null)
             {
                 AnsiConsole.MarkupLine(
-                    $"[red]Error:[/] no section named '{Markup.Escape(dayArg)}' in journal. " +
+                    $"[red]Error:[/] no section named '{Markup.Escape(searchName)}' in journal. " +
                     $"Found: {Markup.Escape(string.Join(", ", session.Document.Days.Select(d => d.Name)))}");
                 return 2;
             }
             targets = new[] { match };
-        }
-        else
-        {
-            var today = session.Document.Days.FirstOrDefault(d =>
-                string.Equals(d.Name, "TODAY", StringComparison.OrdinalIgnoreCase));
-            if (today is null)
-            {
-                AnsiConsole.MarkupLine(
-                    "[red]Error:[/] no section named 'TODAY' in journal. " +
-                    $"Found: {Markup.Escape(string.Join(", ", session.Document.Days.Select(d => d.Name)))}");
-                return 2;
-            }
-            targets = new[] { today };
         }
 
         bool first = true;

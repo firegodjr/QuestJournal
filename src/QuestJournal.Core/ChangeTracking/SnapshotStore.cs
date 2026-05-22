@@ -22,7 +22,7 @@ public sealed class SnapshotStore
     }
 
     public static string DefaultPath() =>
-        Path.Combine(XdgPaths.DataHome(), "quest-journal", "state.json");
+        Path.Combine(XdgPaths.DataHome(), XdgPaths.AppDirectory, "state.json");
 
     public JournalSnapshot? Load()
     {

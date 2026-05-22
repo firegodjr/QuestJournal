@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using QuestJournal.Cli.IO;
 using QuestJournal.Core.Parsing;
 using Spectre.Console;
 
@@ -31,7 +32,7 @@ public sealed class EditCommand : ICommand
                 }
                 catch (IOException ex)
                 {
-                    AnsiConsole.MarkupLine($"[yellow]Warning:[/] could not write {Markup.Escape(targetExrc)}: {Markup.Escape(ex.Message)}");
+                    ConsoleReporter.Warn("Warning", $"could not write {targetExrc}: {ex.Message}");
                 }
             }
         }
@@ -45,7 +46,7 @@ public sealed class EditCommand : ICommand
         using var proc = Process.Start(psi);
         if (proc is null)
         {
-            AnsiConsole.MarkupLine($"[red]Failed to start editor:[/] {Markup.Escape(editor)}");
+            ConsoleReporter.Error("Failed to start editor", editor);
             return 1;
         }
         proc.WaitForExit();

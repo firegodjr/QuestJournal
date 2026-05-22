@@ -19,7 +19,7 @@ public sealed class ConfigStore
     }
 
     public static string DefaultPath() =>
-        Path.Combine(XdgPaths.ConfigHome(), "quest-journal", "config.json");
+        Path.Combine(XdgPaths.ConfigHome(), XdgPaths.AppDirectory, "config.json");
 
     public Config Load()
     {

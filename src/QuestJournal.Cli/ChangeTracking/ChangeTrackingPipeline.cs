@@ -10,7 +10,7 @@ public sealed class ChangeTrackingPipeline
     private readonly ChangeDetector _detector;
     private readonly DiffRenderer _renderer;
 
-    public ChangeTrackingPipeline(GlyphTheme theme, SnapshotStore? store = null)
+    public ChangeTrackingPipeline(QuestTheme theme, SnapshotStore? store = null)
     {
         _store = store ?? new SnapshotStore();
         _detector = new ChangeDetector();

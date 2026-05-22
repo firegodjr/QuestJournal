@@ -5,19 +5,19 @@ namespace QuestJournal.Cli.Rendering;
 
 public sealed class StatusRenderer
 {
-    private readonly GlyphTheme _theme;
+    private readonly QuestTheme _theme;
 
-    public StatusRenderer(GlyphTheme theme)
+    public StatusRenderer(QuestTheme theme)
     {
         _theme = theme;
     }
 
     public void RenderDay(DaySection day)
     {
-        AnsiConsole.MarkupLine($"[bold]# {Markup.Escape(day.Name)}[/]");
+        AnsiConsole.MarkupLine(QuestTheme.DayHeader(day.Name));
         foreach (var category in day.Categories)
         {
-            AnsiConsole.MarkupLine($"  [bold dim]## {Markup.Escape(category.Name)}[/]");
+            AnsiConsole.MarkupLine($"  {QuestTheme.CategoryHeader(category.Name)}");
             foreach (var quest in category.TopLevelQuests)
             {
                 RenderQuest(quest);
@@ -27,9 +27,8 @@ public sealed class StatusRenderer
 
     private void RenderQuest(Quest quest)
     {
-        var glyph = _theme.GlyphFor(quest.Status);
-        var styledGlyph = QuestStyles.StyleGlyph(quest.Status, glyph);
-        var styledText = QuestStyles.StyleText(quest.Status, quest.Text);
+        var styledGlyph = _theme.StyledGlyph(quest.Status);
+        var styledText = _theme.StyledText(quest.Status, quest.Text);
         AnsiConsole.MarkupLine($"    {styledGlyph} {styledText} [grey](line {quest.LineNumber})[/]");
     }
 }

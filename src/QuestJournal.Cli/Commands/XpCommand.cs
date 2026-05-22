@@ -1,3 +1,4 @@
+using QuestJournal.Cli.IO;
 using Spectre.Console;
 
 namespace QuestJournal.Cli.Commands;
@@ -19,7 +20,7 @@ public sealed class XpCommand : ICommand
             {
                 if (i + 1 >= args.Length)
                 {
-                    AnsiConsole.MarkupLine("[red]--format requires a value (today|lifetime|full).[/]");
+                    ConsoleReporter.ErrorLine("--format requires a value (today|lifetime|full).");
                     return 1;
                 }
                 value = args[++i];
@@ -30,7 +31,7 @@ public sealed class XpCommand : ICommand
             }
             else
             {
-                AnsiConsole.MarkupLine($"[red]Unexpected argument:[/] {Markup.Escape(a)}");
+                ConsoleReporter.Error("Unexpected argument", a);
                 return 1;
             }
 
@@ -40,9 +41,7 @@ public sealed class XpCommand : ICommand
                 case "lifetime": format = Format.Lifetime; break;
                 case "full": format = Format.Full; break;
                 default:
-                    AnsiConsole.MarkupLine(
-                        $"[red]Unknown --format value:[/] {Markup.Escape(value)}. " +
-                        "Expected today|lifetime|full.");
+                    ConsoleReporter.Error("Unknown --format value", $"{value}. Expected today|lifetime|full.");
                     return 1;
             }
         }
