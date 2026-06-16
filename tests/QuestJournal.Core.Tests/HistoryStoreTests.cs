@@ -44,8 +44,8 @@ public class HistoryStoreTests
             var t1 = new DateTimeOffset(2026, 6, 16, 9, 0, 0, TimeSpan.Zero);
             var t2 = t1.AddHours(1);
 
-            store.Append(EntryAt(t1, "first"), TimeSpan.FromDays(90));
-            store.Append(EntryAt(t2, "second"), TimeSpan.FromDays(90));
+            store.Append(EntryAt(t1, "first"));
+            store.Append(EntryAt(t2, "second"));
 
             var loaded = store.LoadAll();
             Assert.Equal(2, loaded.Count);
@@ -60,25 +60,59 @@ public class HistoryStoreTests
     }
 
     [Fact]
-    public void Append_prunes_entries_older_than_retention()
+    public void Append_keeps_four_recent_months_as_detail()
     {
         var path = TempPath();
+        var archivePath = TempPath();
         try
         {
-            var store = new HistoryStore(path);
-            var old = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
-            var recent = old.AddDays(200);
+            var store = new HistoryStore(path, new HistoryArchiveStore(archivePath));
 
-            store.Append(EntryAt(old, "stale"), TimeSpan.FromDays(90));
-            store.Append(EntryAt(recent, "fresh"), TimeSpan.FromDays(90));
+            // Five distinct local months, one batch each.
+            for (int month = 1; month <= 5; month++)
+            {
+                store.Append(EntryAt(new DateTimeOffset(2026, month, 15, 9, 0, 0, TimeSpan.Zero), $"m{month}"));
+            }
 
-            var loaded = store.LoadAll();
-            var entry = Assert.Single(loaded);
-            Assert.Equal("fresh", entry.Changes[0].Text);
+            // Months 2..5 remain as detail; month 1 was compacted out.
+            var detailTexts = store.LoadAll().Select(e => e.Changes[0].Text).ToList();
+            Assert.Equal(new[] { "m2", "m3", "m4", "m5" }, detailTexts);
         }
         finally
         {
             if (File.Exists(path)) File.Delete(path);
+            if (File.Exists(archivePath)) File.Delete(archivePath);
+        }
+    }
+
+    [Fact]
+    public void Append_compacts_oldest_month_into_archive()
+    {
+        var path = TempPath();
+        var archivePath = TempPath();
+        try
+        {
+            var archive = new HistoryArchiveStore(archivePath);
+            var store = new HistoryStore(path, archive);
+
+            for (int month = 1; month <= 5; month++)
+            {
+                store.Append(EntryAt(new DateTimeOffset(2026, month, 15, 9, 0, 0, TimeSpan.Zero), $"m{month}"));
+            }
+
+            var archived = Assert.Single(archive.LoadAll());
+            Assert.Equal("2026-01", archived.Month);
+            Assert.Equal(10, archived.TotalXp);               // single EntryAt awards 10
+            Assert.Equal(1, archived.CompletedCount);         // one StatusChanged → Completed
+            Assert.Equal(10d / 31, archived.AverageXpPerDay, 5);
+            var state = Assert.Single(archived.FinalStates);
+            Assert.Equal("m1", state.Text);
+            Assert.Equal(QuestStatus.Completed, state.Status); // StatusChanged → Completed
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+            if (File.Exists(archivePath)) File.Delete(archivePath);
         }
     }
 
@@ -89,7 +123,7 @@ public class HistoryStoreTests
         try
         {
             var store = new HistoryStore(path);
-            store.Append(EntryAt(new DateTimeOffset(2026, 6, 16, 9, 0, 0, TimeSpan.Zero), "good"), TimeSpan.FromDays(90));
+            store.Append(EntryAt(new DateTimeOffset(2026, 6, 16, 9, 0, 0, TimeSpan.Zero), "good"));
             File.AppendAllText(path, "{not json\n");
 
             var entry = Assert.Single(store.LoadAll());
@@ -119,7 +153,7 @@ public class HistoryStoreTests
                 ToCategory = "MAINQUESTS",
             });
 
-            store.Append(entry, TimeSpan.FromDays(90));
+            store.Append(entry);
 
             var loaded = Assert.Single(store.LoadAll());
             var move = Assert.Single(loaded.Moves);

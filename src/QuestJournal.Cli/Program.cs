@@ -52,6 +52,7 @@ static void PrintHelp()
     AnsiConsole.MarkupLine("    Open the configured journal in $EDITOR. For nvim, drops a bundled .nvim.lua next to the journal if missing.");
     AnsiConsole.MarkupLine("  [yellow]xp[/] [[--format=today|lifetime|full]]");
     AnsiConsole.MarkupLine("    Show XP. Default 'full' prints the footer line; 'today' or 'lifetime' print a single integer.");
-    AnsiConsole.MarkupLine("  [yellow]history[/] [[-a|--all]] [[--entry <text>]] [[--file <path>]]");
+    AnsiConsole.MarkupLine("  [yellow]history[/] [[-a|--all]] [[--entry <text>]] [[--graph [[--week|--month|--year|--all]]]] [[--file <path>]]");
     AnsiConsole.MarkupLine("    Show recorded changes. Default: last 24h; --all: all retained history. With --entry: full timeline of one quest and its children.");
+    AnsiConsole.MarkupLine("    With --graph: bar chart of XP over time (--week default, --month, --year, --all).");
 }

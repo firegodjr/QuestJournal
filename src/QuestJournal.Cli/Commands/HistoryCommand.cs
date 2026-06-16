@@ -8,7 +8,8 @@ namespace QuestJournal.Cli.Commands;
 /// <summary>
 /// Read-only view over the durable change log. Default shows the last 24 hours of
 /// changes (standup prep); <c>--entry "text"</c> shows the full timeline of one quest
-/// and its children.
+/// and its children; <c>--graph</c> plots XP over time (<c>--week</c>/<c>--month</c>/
+/// <c>--year</c>/<c>--all</c> scopes).
 /// </summary>
 public sealed class HistoryCommand : ICommand
 {
@@ -19,6 +20,8 @@ public sealed class HistoryCommand : ICommand
         string? entry = null;
         string? fileOverride = null;
         bool all = false;
+        bool graph = false;
+        GraphScope? explicitScope = null;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -28,6 +31,21 @@ public sealed class HistoryCommand : ICommand
                 case "-a":
                 case "--all":
                     all = true;
+                    break;
+                case "--graph":
+                    graph = true;
+                    break;
+                case "--week":
+                    graph = true;
+                    explicitScope = GraphScope.Week;
+                    break;
+                case "--month":
+                    graph = true;
+                    explicitScope = GraphScope.Month;
+                    break;
+                case "--year":
+                    graph = true;
+                    explicitScope = GraphScope.Year;
                     break;
                 case "--entry":
                     // Greedily consume the following tokens up to the next flag, so an
@@ -68,15 +86,46 @@ public sealed class HistoryCommand : ICommand
         }
 
         var session = JournalSession.Open(fileOverride, requireConfig: false);
-        var renderer = new HistoryRenderer(session.Theme);
 
         var entries = new HistoryStore().LoadAll()
             .Where(e => string.Equals(e.JournalPath, session.FilePath, StringComparison.Ordinal))
             .ToList();
 
+        if (graph)
+        {
+            var scope = explicitScope ?? (all ? GraphScope.All : GraphScope.Week);
+            return RenderGraph(session, entries, scope);
+        }
+
+        var renderer = new HistoryRenderer(session.Theme);
         return entry is null
             ? RenderRecent(renderer, entries, all)
             : RenderTimeline(renderer, entries, entry);
+    }
+
+    private static int RenderGraph(JournalSession session, List<HistoryEntry> entries, GraphScope scope)
+    {
+        // The archive carries no journal path, so monthly scopes (year/all) include archived
+        // XP from every journal. Acceptable for v1 — most users track a single journal.
+        var archive = (scope is GraphScope.Year or GraphScope.All)
+            ? new HistoryArchiveStore().LoadAll()
+            : Array.Empty<HistoryArchiveMonth>();
+
+        var now = DateTimeOffset.Now;
+        var xpBars = XpHistoryGraph.Build(scope, entries, archive, now, GraphMetric.Xp);
+        var completedBars = XpHistoryGraph.Build(scope, entries, archive, now, GraphMetric.Completed);
+
+        if (xpBars.All(b => b.Value == 0) && completedBars.All(b => b.Value == 0))
+        {
+            AnsiConsole.MarkupLine("[dim]No history to graph.[/]");
+            return 0;
+        }
+
+        var renderer = new HistoryGraphRenderer(session.Theme);
+        renderer.Render(scope, GraphMetric.Xp, xpBars);
+        AnsiConsole.WriteLine();
+        renderer.Render(scope, GraphMetric.Completed, completedBars);
+        return 0;
     }
 
     private static int RenderRecent(HistoryRenderer renderer, List<HistoryEntry> entries, bool all)

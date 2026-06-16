@@ -52,9 +52,7 @@ public sealed class ChangeTrackingPipeline
 
             if (changes.Changes.Count > 0 || changes.Moves.Count > 0)
             {
-                _history.Append(
-                    BuildHistoryEntry(changes, journalPath, xpAwarded),
-                    TimeSpan.FromDays(HistoryStore.RetentionDays));
+                _history.Append(BuildHistoryEntry(changes, journalPath, xpAwarded));
             }
         }
 
