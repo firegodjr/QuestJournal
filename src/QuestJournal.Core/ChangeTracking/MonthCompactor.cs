@@ -22,11 +22,24 @@ public static class MonthCompactor
         long totalXp = 0;
         long completed = 0;
         var states = new Dictionary<string, ArchivedQuestState>(StringComparer.Ordinal);
+        var xpByDay = new Dictionary<int, long>();
+        var completedByDay = new Dictionary<int, long>();
 
         foreach (var entry in ordered)
         {
             totalXp += entry.XpAwarded;
-            completed += XpHistoryGraph.CompletedIn(entry);
+            var entryCompleted = XpHistoryGraph.CompletedIn(entry);
+            completed += entryCompleted;
+
+            var day = entry.Timestamp.ToLocalTime().Day;
+            if (entry.XpAwarded != 0)
+            {
+                xpByDay[day] = xpByDay.GetValueOrDefault(day) + entry.XpAwarded;
+            }
+            if (entryCompleted != 0)
+            {
+                completedByDay[day] = completedByDay.GetValueOrDefault(day) + entryCompleted;
+            }
 
             foreach (var change in entry.Changes)
             {
@@ -86,6 +99,8 @@ public static class MonthCompactor
             TotalXp = totalXp,
             CompletedCount = completed,
             AverageXpPerDay = daysInMonth > 0 ? (double)totalXp / daysInMonth : 0,
+            XpByDay = xpByDay,
+            CompletedByDay = completedByDay,
             FinalStates = states.Values
                 .OrderBy(s => s.Text, StringComparer.Ordinal)
                 .ToList(),

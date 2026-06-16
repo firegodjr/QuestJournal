@@ -21,6 +21,16 @@ public sealed class HistoryArchiveMonth
     /// <summary><see cref="TotalXp"/> divided by the number of calendar days in the month.</summary>
     public double AverageXpPerDay { get; set; }
 
+    /// <summary>
+    /// XP earned per local day-of-month (1–31). Retained at compaction so monthly-scope
+    /// heatmaps can still show true per-day cells. Empty for months archived before this
+    /// breakdown was added — callers fall back to <see cref="AverageXpPerDay"/>.
+    /// </summary>
+    public Dictionary<int, long> XpByDay { get; set; } = new();
+
+    /// <summary>Tasks that became Completed per local day-of-month (1–31). See <see cref="XpByDay"/>.</summary>
+    public Dictionary<int, long> CompletedByDay { get; set; } = new();
+
     /// <summary>Final known state of every quest text touched during the month.</summary>
     public List<ArchivedQuestState> FinalStates { get; set; } = new();
 }

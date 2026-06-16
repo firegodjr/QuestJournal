@@ -112,19 +112,19 @@ public sealed class HistoryCommand : ICommand
             : Array.Empty<HistoryArchiveMonth>();
 
         var now = DateTimeOffset.Now;
-        var xpBars = XpHistoryGraph.Build(scope, entries, archive, now, GraphMetric.Xp);
-        var completedBars = XpHistoryGraph.Build(scope, entries, archive, now, GraphMetric.Completed);
+        var xpGrid = XpHistoryGraph.Build(scope, entries, archive, now, GraphMetric.Xp);
+        var completedGrid = XpHistoryGraph.Build(scope, entries, archive, now, GraphMetric.Completed);
 
-        if (xpBars.All(b => b.Value == 0) && completedBars.All(b => b.Value == 0))
+        if (xpGrid.Max == 0 && completedGrid.Max == 0)
         {
             AnsiConsole.MarkupLine("[dim]No history to graph.[/]");
             return 0;
         }
 
-        var renderer = new HistoryGraphRenderer(session.Theme);
-        renderer.Render(scope, GraphMetric.Xp, xpBars);
+        var renderer = new HeatmapRenderer(session.Theme);
+        renderer.Render(xpGrid);
         AnsiConsole.WriteLine();
-        renderer.Render(scope, GraphMetric.Completed, completedBars);
+        renderer.Render(completedGrid);
         return 0;
     }
 

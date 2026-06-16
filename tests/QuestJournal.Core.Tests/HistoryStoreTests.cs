@@ -105,6 +105,9 @@ public class HistoryStoreTests
             Assert.Equal(10, archived.TotalXp);               // single EntryAt awards 10
             Assert.Equal(1, archived.CompletedCount);         // one StatusChanged → Completed
             Assert.Equal(10d / 31, archived.AverageXpPerDay, 5);
+            // Per-day breakdown is retained at compaction (one entry → one day bucket).
+            Assert.Equal(10, archived.XpByDay.Values.Sum());
+            Assert.Equal(1, archived.CompletedByDay.Values.Sum());
             var state = Assert.Single(archived.FinalStates);
             Assert.Equal("m1", state.Text);
             Assert.Equal(QuestStatus.Completed, state.Status); // StatusChanged → Completed
