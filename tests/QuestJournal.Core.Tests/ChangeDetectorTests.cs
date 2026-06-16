@@ -247,4 +247,48 @@ public class ChangeDetectorTests
 
         Assert.True(changes.IsEmpty);
     }
+
+    [Fact]
+    public void Same_status_cross_day_move_records_a_move_without_touching_changes_or_xp()
+    {
+        var prior = Parse("# TODAY\n## MAINQUESTS\n- [ ] eta\n# TOMORROW\n## MAINQUESTS\n");
+        var current = Parse("# TODAY\n## MAINQUESTS\n# TOMORROW\n## MAINQUESTS\n- [ ] eta\n");
+        var changes = new ChangeDetector().Detect(SnapshotOf(prior), current);
+
+        // Display behavior is unchanged: no diff event, no XP.
+        Assert.True(changes.IsEmpty);
+        Assert.Empty(changes.Changes);
+        Assert.Equal(0L, XpCalculator.Award(changes));
+
+        // But the move is captured on the side channel.
+        var move = Assert.IsType<Change.Moved>(Assert.Single(changes.Moves));
+        Assert.Equal("eta", move.To.Text);
+        Assert.Equal("TODAY", move.From.Day);
+        Assert.Equal("TOMORROW", move.To.Day);
+        Assert.Equal(QuestStatus.Open, move.Status);
+    }
+
+    [Fact]
+    public void Same_status_cross_category_move_records_a_move()
+    {
+        var prior = Parse("# TODAY\n## MAINQUESTS\n- [ ] iota\n## SIDEQUESTS\n");
+        var current = Parse("# TODAY\n## MAINQUESTS\n## SIDEQUESTS\n- [ ] iota\n");
+        var changes = new ChangeDetector().Detect(SnapshotOf(prior), current);
+
+        Assert.True(changes.IsEmpty);
+        var move = Assert.IsType<Change.Moved>(Assert.Single(changes.Moves));
+        Assert.Equal("MAINQUESTS", move.From.Category);
+        Assert.Equal("SIDEQUESTS", move.To.Category);
+    }
+
+    [Fact]
+    public void Move_with_status_change_collapses_to_status_change_and_records_no_move()
+    {
+        var prior = Parse("# TODAY\n## MAINQUESTS\n- [ ] gamma\n# TOMORROW\n## MAINQUESTS\n");
+        var current = Parse("# TODAY\n## MAINQUESTS\n# TOMORROW\n## MAINQUESTS\n- [x] gamma\n");
+        var changes = new ChangeDetector().Detect(SnapshotOf(prior), current);
+
+        Assert.IsType<Change.StatusChanged>(Assert.Single(changes.Changes));
+        Assert.Empty(changes.Moves);
+    }
 }

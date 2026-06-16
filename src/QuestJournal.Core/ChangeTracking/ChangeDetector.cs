@@ -44,13 +44,15 @@ public sealed class ChangeDetector
             changes.Add(new Change.Removed(key, lastStatus));
         }
 
-        CollapseMoves(changes);
+        var moves = CollapseMoves(changes);
 
-        return new ChangeSet(changes);
+        return new ChangeSet(changes, moves);
     }
 
-    private static void CollapseMoves(List<Change> changes)
+    private static List<Change> CollapseMoves(List<Change> changes)
     {
+        var moves = new List<Change>();
+
         var removedByText = new Dictionary<string, Queue<int>>(StringComparer.Ordinal);
         for (int i = 0; i < changes.Count; i++)
         {
@@ -65,7 +67,7 @@ public sealed class ChangeDetector
             }
         }
 
-        if (removedByText.Count == 0) return;
+        if (removedByText.Count == 0) return moves;
 
         var toDelete = new HashSet<int>();
         for (int i = 0; i < changes.Count; i++)
@@ -78,6 +80,7 @@ public sealed class ChangeDetector
 
             if (removed.LastStatus == a.Status)
             {
+                moves.Add(new Change.Moved(removed.Key, a.Key, a.Status));
                 toDelete.Add(i);
                 toDelete.Add(removedIdx);
             }
@@ -88,7 +91,7 @@ public sealed class ChangeDetector
             }
         }
 
-        if (toDelete.Count == 0) return;
+        if (toDelete.Count == 0) return moves;
 
         for (int i = changes.Count - 1; i >= 0; i--)
         {
@@ -97,5 +100,7 @@ public sealed class ChangeDetector
                 changes.RemoveAt(i);
             }
         }
+
+        return moves;
     }
 }
