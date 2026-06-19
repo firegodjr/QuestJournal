@@ -73,8 +73,7 @@ public sealed class HeatmapRenderer
             return "  ";
         }
 
-        var (r8, g8, b8) = Shade(Level(grid.Values[r, c], grid.Max), full);
-        return $"[#{r8:x2}{g8:x2}{b8:x2}]██[/]";
+        return Swatch(Level(grid.Values[r, c], grid.Max), full);
     }
 
     /// <summary>0 (empty) through <see cref="Levels"/>, by ceil of the value's share of the peak.</summary>
@@ -88,18 +87,40 @@ public sealed class HeatmapRenderer
         return Math.Clamp(level, 1, Levels);
     }
 
-    /// <summary>RGB for a level: a near-black grey for empty, else the full color scaled 0.3→1.0.</summary>
+    /// <summary>
+    /// RGB for a level. Empty is a near-black grey. Levels 1–3 share one color (level 3's): the
+    /// dim levels 1–2 render with partial-coverage shade glyphs (see <see cref="LevelGlyph"/>),
+    /// so glyph density — not a hard-to-read color step — carries the gradient there. Levels 4–5
+    /// then brighten that color toward the peak, giving a clean grey→shade→solid→bright ramp.
+    /// </summary>
     private static (int, int, int) Shade(int level, (int R, int G, int B) full)
     {
         if (level <= 0)
         {
             return Empty;
         }
-        var factor = 0.3 + 0.7 * (level - 1) / (Levels - 1);
+        var rampLevel = Math.Max(level, 3);
+        var factor = 0.6 + 0.4 * (rampLevel - 3) / (Levels - 3);
         return (
             (int)Math.Round(full.R * factor),
             (int)Math.Round(full.G * factor),
             (int)Math.Round(full.B * factor));
+    }
+
+    /// <summary>The two-char block for a level: shaded glyphs for the dim levels 1–2, where color
+    /// alone lacks resolution, and solid blocks for empty and the brighter levels 3–5.</summary>
+    private static string LevelGlyph(int level) => level switch
+    {
+        1 => "░░", // ░░ light shade
+        2 => "▒▒", // ▒▒ medium shade
+        _ => "██", // ██ full block
+    };
+
+    /// <summary>Markup for a level's swatch: its glyph painted in its color.</summary>
+    private static string Swatch(int level, (int R, int G, int B) full)
+    {
+        var (r, g, b) = Shade(level, full);
+        return $"[#{r:x2}{g:x2}{b:x2}]{LevelGlyph(level)}[/]";
     }
 
     /// <summary>
@@ -152,7 +173,7 @@ public sealed class HeatmapRenderer
             var range = lo == hi
                 ? lo.ToString(CultureInfo.InvariantCulture)
                 : $"{lo}–{hi}";
-            parts.Add($"{Block(Shade(level, full))} {range}");
+            parts.Add($"{Swatch(level, full)} {range}");
             prevHi = hi;
         }
 

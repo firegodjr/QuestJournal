@@ -71,19 +71,21 @@ public class XpHistoryGraphTests
     }
 
     [Fact]
-    public void Week_grid_drops_entries_outside_seven_am_to_seven_pm()
+    public void Week_grid_clamps_entries_outside_seven_am_to_seven_pm_into_edge_rows()
     {
         var detail = new[]
         {
-            Entry(Local(2026, 6, 15, 3), 99),    // 3am: before the window
-            Entry(Local(2026, 6, 15, 20), 99),   // 8pm: after the window
+            Entry(Local(2026, 6, 15, 3), 11),    // 3am: before the window → first row (07)
+            Entry(Local(2026, 6, 15, 19), 13),   // 7pm: at/after the window → last row (17)
             Entry(Local(2026, 6, 15, 12), 4),    // noon: 11–13 block (row 2)
         };
 
         var grid = XpHistoryGraph.Build(GraphScope.Week, detail, Array.Empty<HistoryArchiveMonth>(), Now);
 
+        Assert.Equal(11, grid.Values[0, 6]);   // 3am clamped into the first block, today's column
+        Assert.Equal(13, grid.Values[5, 6]);   // 7pm clamped into the last block, today's column
         Assert.Equal(4, grid.Values[2, 6]);
-        Assert.Equal(4, grid.Max);   // out-of-window entries contributed nothing
+        Assert.Equal(13, grid.Max);            // nothing dropped
     }
 
     [Fact]

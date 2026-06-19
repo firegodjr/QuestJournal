@@ -13,12 +13,18 @@ public class HeatmapLayoutTests
     }
 
     [Fact]
-    public void DayHour_drops_hours_outside_the_configured_span()
+    public void DayHour_clamps_hours_outside_the_configured_span_into_edge_rows()
     {
         var layout = HeatmapLayout.ForDayHour(GraphScope.Week, Now, days: 7, labelFormat: "dd", startHour: 7, endHour: 19, blockHours: 2);
 
-        Assert.False(layout.TryLocate(Local(2026, 6, 15, 3), out _, out _));  // before 07
-        Assert.False(layout.TryLocate(Local(2026, 6, 15, 20), out _, out _)); // after 19
+        Assert.True(layout.TryLocate(Local(2026, 6, 15, 3), out var earlyRow, out var earlyCol)); // before 07
+        Assert.Equal(0, earlyRow);   // clamped into the first block
+        Assert.Equal(6, earlyCol);   // still today's column
+
+        Assert.True(layout.TryLocate(Local(2026, 6, 15, 20), out var lateRow, out var lateCol)); // after 19
+        Assert.Equal(5, lateRow);    // clamped into the last block
+        Assert.Equal(6, lateCol);
+
         Assert.True(layout.TryLocate(Local(2026, 6, 15, 12), out var row, out var col));
         Assert.Equal(2, row); // 11–13 block
         Assert.Equal(6, col); // today

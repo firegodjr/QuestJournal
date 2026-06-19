@@ -85,7 +85,8 @@ public sealed class HeatmapLayout
     /// <summary>
     /// Days on the x-axis, hour-of-day blocks on the y-axis. Rows span
     /// <paramref name="startHour"/>..<paramref name="endHour"/> in <paramref name="blockHours"/>
-    /// steps; timestamps whose local hour falls outside that span have no row and are dropped.
+    /// steps; timestamps whose local hour falls outside that span are clamped into the first/last
+    /// row rather than dropped, so off-hours activity still lands in its day's column.
     /// </summary>
     public static HeatmapLayout ForDayHour(
         GraphScope scope, DateTimeOffset now, int days, string labelFormat,
@@ -116,11 +117,14 @@ public sealed class HeatmapLayout
         {
             var local = ts.ToLocalTime();
             var day = DateOnly.FromDateTime(local.DateTime);
-            if (!dayIndex.TryGetValue(day, out var col) || local.Hour < startHour || local.Hour >= endHour)
+            if (!dayIndex.TryGetValue(day, out var col))
             {
                 return null;
             }
-            return ((local.Hour - startHour) / blockHours, col);
+            // Clamp off-hours timestamps into the edge rows so nothing is silently lost: hours
+            // before startHour fall into the first block, hours at/after endHour into the last.
+            var row = Math.Clamp((local.Hour - startHour) / blockHours, 0, rows - 1);
+            return (row, col);
         }
 
         return new HeatmapLayout(scope, columnLabels, rowLabels, hasData, Locate);
