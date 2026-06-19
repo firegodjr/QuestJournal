@@ -8,6 +8,7 @@ var commands = new Dictionary<string, ICommand>(StringComparer.OrdinalIgnoreCase
     ["edit"] = new EditCommand(),
     ["xp"] = new XpCommand(),
     ["history"] = new HistoryCommand(),
+    ["init"] = new InitCommand(),
 };
 
 if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
@@ -54,6 +55,8 @@ static void PrintHelp()
     AnsiConsole.MarkupLine("    Show XP. Default 'full' prints the footer line; 'today' or 'lifetime' print a single integer.");
     AnsiConsole.MarkupLine("  [yellow]history[/] [[-a|--all]] [[--entry <text>]] [[--graph [[--commits]] [[--week|--month|--year|--all]]]] [[--file <path>]]");
     AnsiConsole.MarkupLine("    Show recorded changes. Default: last 24h; --all: all retained history. With --entry: full timeline of one quest and its children.");
+    AnsiConsole.MarkupLine("  [yellow]init[/] [[--file <path>]] [[--force]]");
+    AnsiConsole.MarkupLine("    Initialize QuestJournal: create config and an optional skeleton journal file.");
     AnsiConsole.MarkupLine("    With --graph: heatmap of XP over time (--week default, --month, --year, --all).");
     AnsiConsole.MarkupLine("    With --graph --commits: heatmap of your git commits across lazygit's recent repos, one color per repo.");
 }
