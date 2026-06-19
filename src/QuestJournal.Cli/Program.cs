@@ -8,6 +8,7 @@ var commands = new Dictionary<string, ICommand>(StringComparer.OrdinalIgnoreCase
     ["edit"] = new EditCommand(),
     ["xp"] = new XpCommand(),
     ["history"] = new HistoryCommand(),
+    ["init"] = new InitCommand(),
 };
 
 if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
@@ -55,4 +56,6 @@ static void PrintHelp()
     AnsiConsole.MarkupLine("  [yellow]history[/] [[-a|--all]] [[--entry <text>]] [[--graph [[--week|--month|--year|--all]]]] [[--file <path>]]");
     AnsiConsole.MarkupLine("    Show recorded changes. Default: last 24h; --all: all retained history. With --entry: full timeline of one quest and its children.");
     AnsiConsole.MarkupLine("    With --graph: bar chart of XP over time (--week default, --month, --year, --all).");
+    AnsiConsole.MarkupLine("  [yellow]init[/] [[--file <path>]] [[--force]]");
+    AnsiConsole.MarkupLine("    Initialize QuestJournal: create config and an optional skeleton journal file.");
 }

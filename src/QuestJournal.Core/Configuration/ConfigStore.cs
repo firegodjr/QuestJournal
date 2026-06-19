@@ -42,6 +42,18 @@ public sealed class ConfigStore
 
         return config;
     }
+
+    public void Save(Config config)
+    {
+        var dir = Path.GetDirectoryName(ConfigPath);
+        if (!string.IsNullOrEmpty(dir))
+        {
+            Directory.CreateDirectory(dir);
+        }
+
+        var json = JsonSerializer.Serialize(config, JsonOptions);
+        File.WriteAllText(ConfigPath, json);
+    }
 }
 
 public sealed class ConfigMissingException : Exception
