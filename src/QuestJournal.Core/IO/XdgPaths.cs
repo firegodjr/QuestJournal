@@ -8,6 +8,8 @@ internal static class XdgPaths
 
     public static string DataHome() => Resolve("XDG_DATA_HOME", Path.Combine(".local", "share"));
 
+    public static string StateHome() => Resolve("XDG_STATE_HOME", Path.Combine(".local", "state"));
+
     private static string Resolve(string envVar, string fallbackUnderHome)
     {
         var value = Environment.GetEnvironmentVariable(envVar);

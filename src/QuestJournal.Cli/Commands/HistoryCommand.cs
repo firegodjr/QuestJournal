@@ -1,6 +1,7 @@
 using QuestJournal.Cli.IO;
 using QuestJournal.Cli.Rendering;
 using QuestJournal.Core.ChangeTracking;
+using QuestJournal.Core.IO;
 using Spectre.Console;
 
 namespace QuestJournal.Cli.Commands;
@@ -9,7 +10,8 @@ namespace QuestJournal.Cli.Commands;
 /// Read-only view over the durable change log. Default shows the last 24 hours of
 /// changes (standup prep); <c>--entry "text"</c> shows the full timeline of one quest
 /// and its children; <c>--graph</c> plots XP over time (<c>--week</c>/<c>--month</c>/
-/// <c>--year</c>/<c>--all</c> scopes).
+/// <c>--year</c>/<c>--all</c> scopes). <c>--graph --commits</c> instead plots the user's
+/// git commits across lazygit's recent repositories, one color gradient per repo.
 /// </summary>
 public sealed class HistoryCommand : ICommand
 {
@@ -21,6 +23,7 @@ public sealed class HistoryCommand : ICommand
         string? fileOverride = null;
         bool all = false;
         bool graph = false;
+        bool commits = false;
         GraphScope? explicitScope = null;
 
         for (int i = 0; i < args.Length; i++)
@@ -34,6 +37,10 @@ public sealed class HistoryCommand : ICommand
                     break;
                 case "--graph":
                     graph = true;
+                    break;
+                case "--commits":
+                    graph = true;
+                    commits = true;
                     break;
                 case "--week":
                     graph = true;
@@ -85,6 +92,13 @@ public sealed class HistoryCommand : ICommand
             }
         }
 
+        // The commit graph reads git + lazygit, not the journal, so it needs no session.
+        if (commits)
+        {
+            var commitScope = explicitScope ?? (all ? GraphScope.All : GraphScope.Week);
+            return RenderCommitGraph(commitScope);
+        }
+
         var session = JournalSession.Open(fileOverride, requireConfig: false);
 
         var entries = new HistoryStore().LoadAll()
@@ -125,6 +139,30 @@ public sealed class HistoryCommand : ICommand
         renderer.Render(xpGrid);
         AnsiConsole.WriteLine();
         renderer.Render(completedGrid);
+        return 0;
+    }
+
+    private static int RenderCommitGraph(GraphScope scope)
+    {
+        var now = DateTimeOffset.Now;
+        var repos = LazygitRecentRepos.Load();
+        if (repos.Count == 0)
+        {
+            AnsiConsole.MarkupLine("[dim]No lazygit repositories found.[/]");
+            return 0;
+        }
+
+        var since = HeatmapLayout.WindowStartFor(scope, now);
+        var commits = new GitCommitCollector().Collect(repos, since);
+        var grid = CommitHistoryGraph.Build(scope, commits, now);
+
+        if (grid.IsEmpty)
+        {
+            AnsiConsole.MarkupLine("[dim]No commits to graph.[/]");
+            return 0;
+        }
+
+        new CommitHeatmapRenderer().Render(grid);
         return 0;
     }
 
