@@ -23,10 +23,12 @@ public sealed class HeatmapRenderer
     private static readonly (int R, int G, int B) Empty = (38, 38, 38);
 
     private readonly QuestTheme _theme;
+    private readonly IAnsiConsole _console;
 
-    public HeatmapRenderer(QuestTheme theme)
+    public HeatmapRenderer(QuestTheme theme, IAnsiConsole console)
     {
         _theme = theme;
+        _console = console;
     }
 
     public void Render(Heatmap grid)
@@ -36,7 +38,7 @@ public sealed class HeatmapRenderer
             ? $"✓ Completed — {Window(grid.Scope)}"
             : $"{_theme.XpGlyph} XP — {Window(grid.Scope)}";
 
-        AnsiConsole.MarkupLine($"[bold]{heading}[/]");
+        _console.MarkupLine($"[bold]{heading}[/]");
 
         if (grid.Columns == 0 || grid.Rows == 0)
         {
@@ -58,11 +60,11 @@ public sealed class HeatmapRenderer
                     line.Append(' ');
                 }
             }
-            AnsiConsole.MarkupLine(line.ToString());
+            _console.MarkupLine(line.ToString());
         }
 
-        AnsiConsole.WriteLine(ColumnHeader(grid.ColumnLabels, leftMargin));
-        AnsiConsole.MarkupLine(Legend(grid.Max, full));
+        _console.WriteLine(ColumnHeader(grid.ColumnLabels, leftMargin));
+        _console.MarkupLine(Legend(grid.Max, full));
     }
 
     /// <summary>Markup for one cell: a background gap when out-of-period, else a colored block.</summary>

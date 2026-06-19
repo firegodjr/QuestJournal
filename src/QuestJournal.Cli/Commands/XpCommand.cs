@@ -5,45 +5,28 @@ namespace QuestJournal.Cli.Commands;
 
 public sealed class XpCommand : ICommand
 {
+    public string Name => "xp";
+    public string Description => "Show XP. Default 'full' prints the footer line; 'today' or 'lifetime' print a single integer.";
+
     private enum Format { Full, Today, Lifetime }
 
     public int Run(string[] args)
     {
-        var format = Format.Full;
-
-        for (int i = 0; i < args.Length; i++)
+        var parser = new ArgsParser(args);
+        var formatValue = parser.GetFlagValue("--format") ?? "full";
+        var format = formatValue.ToLowerInvariant() switch
         {
-            var a = args[i];
-            string? value = null;
+            "today" => Format.Today,
+            "lifetime" => Format.Lifetime,
+            "full" => Format.Full,
+            _ => (Format)(-1),
+        };
 
-            if (a == "--format")
-            {
-                if (i + 1 >= args.Length)
-                {
-                    ConsoleReporter.ErrorLine("--format requires a value (today|lifetime|full).");
-                    return 1;
-                }
-                value = args[++i];
-            }
-            else if (a.StartsWith("--format="))
-            {
-                value = a.Substring("--format=".Length);
-            }
-            else
-            {
-                ConsoleReporter.Error("Unexpected argument", a);
-                return 1;
-            }
-
-            switch (value)
-            {
-                case "today": format = Format.Today; break;
-                case "lifetime": format = Format.Lifetime; break;
-                case "full": format = Format.Full; break;
-                default:
-                    ConsoleReporter.Error("Unknown --format value", $"{value}. Expected today|lifetime|full.");
-                    return 1;
-            }
+        if (format == (Format)(-1))
+        {
+            var reporter = new ConsoleReporter(AnsiConsole.Console);
+            reporter.Error("Unknown --format value", $"{formatValue}. Expected today|lifetime|full.");
+            return 1;
         }
 
         var session = JournalSession.Open(fileOverride: null, requireConfig: false);

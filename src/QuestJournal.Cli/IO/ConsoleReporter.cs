@@ -2,14 +2,21 @@ using Spectre.Console;
 
 namespace QuestJournal.Cli.IO;
 
-public static class ConsoleReporter
+public sealed class ConsoleReporter
 {
-    public static void Error(string prefix, string message) =>
-        AnsiConsole.MarkupLine($"[red]{prefix}:[/] {Markup.Escape(message)}");
+    private readonly IAnsiConsole _console;
 
-    public static void Warn(string prefix, string message) =>
-        AnsiConsole.MarkupLine($"[yellow]{prefix}:[/] {Markup.Escape(message)}");
+    public ConsoleReporter(IAnsiConsole console)
+    {
+        _console = console;
+    }
 
-    public static void ErrorLine(string message) =>
-        AnsiConsole.MarkupLine($"[red]{Markup.Escape(message)}[/]");
+    public void Error(string prefix, string message) =>
+        _console.MarkupLine($"[red]{prefix}:[/] {Markup.Escape(message)}");
+
+    public void Warn(string prefix, string message) =>
+        _console.MarkupLine($"[yellow]{prefix}:[/] {Markup.Escape(message)}");
+
+    public void ErrorLine(string message) =>
+        _console.MarkupLine($"[red]{Markup.Escape(message)}[/]");
 }

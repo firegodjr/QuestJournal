@@ -14,6 +14,8 @@ public class XpCalculatorTests
     [InlineData(QuestStatus.Open, QuestStatus.Cancelled, 1L)]
     [InlineData(QuestStatus.Open, QuestStatus.Active, 2L)]
     [InlineData(QuestStatus.Active, QuestStatus.Warning, 2L)]
+    [InlineData(QuestStatus.Open, QuestStatus.Comment, 0L)]
+    [InlineData(QuestStatus.Completed, QuestStatus.Comment, 0L)]
     public void Status_change_xp(QuestStatus oldStatus, QuestStatus newStatus, long expected)
     {
         Assert.Equal(expected, XpCalculator.Award(new Change.StatusChanged(K, oldStatus, newStatus)));

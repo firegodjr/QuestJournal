@@ -1,5 +1,5 @@
-using QuestJournal.Core.Configuration;
 using QuestJournal.Cli.IO;
+using QuestJournal.Core.Configuration;
 using Spectre.Console;
 
 namespace QuestJournal.Cli.Commands;
@@ -9,6 +9,9 @@ namespace QuestJournal.Cli.Commands;
 /// </summary>
 public sealed class InitCommand : ICommand
 {
+    public string Name => "init";
+    public string Description => "Initialize QuestJournal: create config and an optional skeleton journal file.";
+
     private const string SkeletonContent = """
                                            # TODAY
                                            ## MAINQUESTS
@@ -30,44 +33,30 @@ public sealed class InitCommand : ICommand
 
     public int Run(string[] args)
     {
-        // Parse optional flags: --file <path>, --force
-        string? fileArg = null;
-        bool force = false;
-
-        for (int i = 0; i < args.Length; i++)
-        {
-            switch (args[i])
-            {
-                case "--file" when i + 1 < args.Length:
-                    fileArg = args[++i];
-                    break;
-                case "--force":
-                    force = true;
-                    break;
-                default:
-                    ConsoleReporter.Error("Unknown argument", args[i]);
-                    return 1;
-            }
-        }
+        var parser = new ArgsParser(args);
+        var fileArg = parser.GetFlagValue("--file");
+        var force = parser.HasFlag("--force");
 
         var configPath = ConfigStore.DefaultPath();
+        var console = AnsiConsole.Console;
+        var reporter = new ConsoleReporter(console);
 
         // Check for existing config
         if (File.Exists(configPath))
         {
             if (!force)
             {
-                var overwrite = AnsiConsole.Confirm(
+                var overwrite = console.Confirm(
                     $"[yellow]Config already exists at[/] [bold]{configPath}[/]. Overwrite?");
                 if (!overwrite)
                 {
-                    AnsiConsole.MarkupLine("[grey]Initialization cancelled.[/]");
+                    console.MarkupLine("[grey]Initialization cancelled.[/]");
                     return 0;
                 }
             }
             else
             {
-                AnsiConsole.MarkupLine(
+                console.MarkupLine(
                     $"[grey]Overwriting existing config at {configPath}[/]");
             }
         }
@@ -77,21 +66,21 @@ public sealed class InitCommand : ICommand
         if (fileArg != null)
         {
             journalPath = Path.GetFullPath(fileArg);
-            AnsiConsole.MarkupLine($"Using journal path: [bold]{journalPath}[/]");
+            console.MarkupLine($"Using journal path: [bold]{journalPath}[/]");
         }
         else
         {
-            journalPath = PromptForJournalPath();
+            journalPath = PromptForJournalPath(console);
         }
 
         // Handle the journal file
         if (File.Exists(journalPath))
         {
-            var useExisting = AnsiConsole.Confirm(
+            var useExisting = console.Confirm(
                 $"Found existing file at [bold]{journalPath}[/]. Use it?");
             if (!useExisting)
             {
-                AnsiConsole.MarkupLine("[grey]Initialization cancelled.[/]");
+                console.MarkupLine("[grey]Initialization cancelled.[/]");
                 return 1;
             }
         }
@@ -99,11 +88,11 @@ public sealed class InitCommand : ICommand
         {
             if (!force)
             {
-                var create = AnsiConsole.Confirm(
+                var create = console.Confirm(
                     $"File doesn't exist. Create skeleton [bold]{journalPath}[/]?");
                 if (!create)
                 {
-                    AnsiConsole.MarkupLine("[grey]Cannot initialize without a journal file.[/]");
+                    console.MarkupLine("[grey]Cannot initialize without a journal file.[/]");
                     return 1;
                 }
             }
@@ -111,12 +100,12 @@ public sealed class InitCommand : ICommand
             try
             {
                 WriteJournalFile(journalPath);
-                AnsiConsole.MarkupLine(
+                console.MarkupLine(
                     $"[green]Created skeleton journal at[/] [bold]{journalPath}[/]");
             }
             catch (Exception ex)
             {
-                ConsoleReporter.Error("Failed to create journal file", ex.Message);
+                reporter.Error("Failed to create journal file", ex.Message);
                 return 1;
             }
         }
@@ -130,28 +119,28 @@ public sealed class InitCommand : ICommand
                 FilePath = journalPath,
                 NerdFontGlyphs = true,
             });
-            AnsiConsole.MarkupLine(
+            console.MarkupLine(
                 $"[green]Wrote config to[/] [bold]{configPath}[/]");
         }
         catch (Exception ex)
         {
-            ConsoleReporter.Error("Failed to write config", ex.Message);
+            reporter.Error("Failed to write config", ex.Message);
             return 1;
         }
 
-        AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine(
+        console.WriteLine();
+        console.MarkupLine(
             "[bold green]QuestJournal initialized![/] Run [yellow]quest status[/] to see your journal.");
 
         return 0;
     }
 
-    private static string PromptForJournalPath()
+    private static string PromptForJournalPath(IAnsiConsole console)
     {
         var cwd = Directory.GetCurrentDirectory();
         var defaultPath = Path.GetFullPath(Path.Combine(cwd, "tasks.md"));
 
-        return AnsiConsole.Prompt(
+        return console.Prompt(
             new TextPrompt<string>(
                     $"Path to your quest journal markdown file [[[grey]{defaultPath}[/]]]:")
                 .DefaultValue(defaultPath)

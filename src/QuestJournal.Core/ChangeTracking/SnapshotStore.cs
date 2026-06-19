@@ -4,7 +4,7 @@ using QuestJournal.Core.IO;
 
 namespace QuestJournal.Core.ChangeTracking;
 
-public sealed class SnapshotStore
+public sealed class SnapshotStore : ISnapshotStore
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -54,11 +54,11 @@ public sealed class SnapshotStore
         var json = JsonSerializer.Serialize(snapshot, JsonOptions);
         var tmp = SnapshotPath + ".tmp";
         File.WriteAllText(tmp, json);
-        if (File.Exists(SnapshotPath))
+        try
         {
             File.Replace(tmp, SnapshotPath, null);
         }
-        else
+        catch (IOException) when (!File.Exists(SnapshotPath))
         {
             File.Move(tmp, SnapshotPath);
         }

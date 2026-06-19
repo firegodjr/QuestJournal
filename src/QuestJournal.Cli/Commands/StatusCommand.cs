@@ -7,49 +7,18 @@ namespace QuestJournal.Cli.Commands;
 
 public sealed class StatusCommand : ICommand
 {
+    public string Name => "status";
+    public string Description => "Print top-level quests for a day (default: TODAY).";
+
     public int Run(string[] args)
     {
-        string? dayArg = null;
-        bool all = false;
-        string? fileOverride = null;
-
-        for (int i = 0; i < args.Length; i++)
-        {
-            var a = args[i];
-            switch (a)
-            {
-                case "-a":
-                case "--all":
-                    all = true;
-                    break;
-                case "--file":
-                    if (i + 1 >= args.Length)
-                    {
-                        ConsoleReporter.ErrorLine("--file requires a path argument.");
-                        return 1;
-                    }
-                    fileOverride = args[++i];
-                    break;
-                default:
-                    if (a.StartsWith("--file="))
-                    {
-                        fileOverride = a.Substring("--file=".Length);
-                    }
-                    else if (dayArg is null)
-                    {
-                        dayArg = a;
-                    }
-                    else
-                    {
-                        ConsoleReporter.Error("Unexpected argument", a);
-                        return 1;
-                    }
-                    break;
-            }
-        }
+        var parser = new ArgsParser(args);
+        var all = parser.HasFlag("-a") || parser.HasFlag("--all");
+        var fileOverride = parser.GetFlagValue("--file");
+        var dayArg = parser.Positional.FirstOrDefault();
 
         var session = JournalSession.Open(fileOverride, requireConfig: false);
-        var renderer = new StatusRenderer(session.Theme);
+        var renderer = new StatusRenderer(session.Theme, session.Console);
         var trackingResult = session.Pipeline.RunAfter(
             session.Document,
             journalPath: session.FilePath,
@@ -67,7 +36,7 @@ public sealed class StatusCommand : ICommand
                 string.Equals(d.Name, searchName, StringComparison.OrdinalIgnoreCase));
             if (match is null)
             {
-                AnsiConsole.MarkupLine(
+                session.Console.MarkupLine(
                     $"[red]Error:[/] no section named '{Markup.Escape(searchName)}' in journal. " +
                     $"Found: {Markup.Escape(string.Join(", ", session.Document.Days.Select(d => d.Name)))}");
                 return 2;
@@ -78,12 +47,12 @@ public sealed class StatusCommand : ICommand
         bool first = true;
         foreach (var day in targets)
         {
-            if (!first) AnsiConsole.WriteLine();
+            if (!first) session.Console.WriteLine();
             renderer.RenderDay(day);
             first = false;
         }
 
-        AnsiConsole.WriteLine();
+        session.Console.WriteLine();
         session.Pipeline.RenderXpFooter(trackingResult);
 
         return 0;

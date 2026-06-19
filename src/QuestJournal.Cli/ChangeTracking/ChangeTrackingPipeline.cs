@@ -1,22 +1,27 @@
 using QuestJournal.Cli.Rendering;
 using QuestJournal.Core.ChangeTracking;
 using QuestJournal.Core.Model;
+using Spectre.Console;
 
 namespace QuestJournal.Cli.ChangeTracking;
 
 public sealed class ChangeTrackingPipeline
 {
-    private readonly SnapshotStore _store;
-    private readonly HistoryStore _history;
+    private readonly ISnapshotStore _store;
+    private readonly IHistoryStore _history;
     private readonly ChangeDetector _detector;
     private readonly DiffRenderer _renderer;
 
-    public ChangeTrackingPipeline(QuestTheme theme, SnapshotStore? store = null, HistoryStore? history = null)
+    public ChangeTrackingPipeline(
+        QuestTheme theme,
+        IAnsiConsole console,
+        ISnapshotStore? store = null,
+        IHistoryStore? history = null)
     {
         _store = store ?? new SnapshotStore();
         _history = history ?? new HistoryStore();
         _detector = new ChangeDetector();
-        _renderer = new DiffRenderer(theme);
+        _renderer = new DiffRenderer(theme, console);
     }
 
     public PipelineResult RunAfter(
@@ -96,6 +101,9 @@ public sealed class ChangeTrackingPipeline
                     hc.OldStatus = sc.OldStatus;
                     hc.NewStatus = sc.NewStatus;
                     break;
+                case Change.Moved:
+                    throw new InvalidOperationException(
+                        "Moves should not appear in the changes list after collapse.");
             }
 
             entry.Changes.Add(hc);

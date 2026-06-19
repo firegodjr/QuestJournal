@@ -2,25 +2,29 @@ using QuestJournal.Cli.Commands;
 using QuestJournal.Cli.IO;
 using Spectre.Console;
 
-var commands = new Dictionary<string, ICommand>(StringComparer.OrdinalIgnoreCase)
+var console = AnsiConsole.Console;
+var reporter = new ConsoleReporter(console);
+
+var commands = new List<ICommand>
 {
-    ["status"] = new StatusCommand(),
-    ["edit"] = new EditCommand(),
-    ["xp"] = new XpCommand(),
-    ["history"] = new HistoryCommand(),
-    ["init"] = new InitCommand(),
+    new StatusCommand(),
+    new EditCommand(),
+    new XpCommand(),
+    new HistoryCommand(),
+    new InitCommand(),
 };
+var commandMap = commands.ToDictionary(c => c.Name, StringComparer.OrdinalIgnoreCase);
 
 if (args.Length == 0 || args[0] is "help" or "--help" or "-h")
 {
-    PrintHelp();
+    PrintHelp(commands, console);
     return 0;
 }
 
-if (!commands.TryGetValue(args[0], out var command))
+if (!commandMap.TryGetValue(args[0], out var command))
 {
-    ConsoleReporter.Error("Unknown command", args[0]);
-    PrintHelp();
+    reporter.Error("Unknown command", args[0]);
+    PrintHelp(commands, console);
     return 1;
 }
 
@@ -32,31 +36,24 @@ catch (JournalSessionException ex)
 {
     if (!ex.Reported)
     {
-        ConsoleReporter.Error("Error", ex.Message);
+        reporter.Error("Error", ex.Message);
     }
     return ex.ExitCode;
 }
 catch (Exception ex)
 {
-    ConsoleReporter.Error("Error", ex.Message);
+    reporter.Error("Error", ex.Message);
     return 1;
 }
 
-static void PrintHelp()
+static void PrintHelp(List<ICommand> commands, IAnsiConsole console)
 {
-    AnsiConsole.MarkupLine("[bold]quest[/] - markdown task journal reader");
-    AnsiConsole.WriteLine();
-    AnsiConsole.MarkupLine("Commands:");
-    AnsiConsole.MarkupLine("  [yellow]status[/] [[day]] [[-a|--all]] [[--file <path>]]");
-    AnsiConsole.MarkupLine("    Print top-level quests for a day (default: TODAY).");
-    AnsiConsole.MarkupLine("  [yellow]edit[/]");
-    AnsiConsole.MarkupLine("    Open the configured journal in $EDITOR. For nvim, drops a bundled .nvim.lua next to the journal if missing.");
-    AnsiConsole.MarkupLine("  [yellow]xp[/] [[--format=today|lifetime|full]]");
-    AnsiConsole.MarkupLine("    Show XP. Default 'full' prints the footer line; 'today' or 'lifetime' print a single integer.");
-    AnsiConsole.MarkupLine("  [yellow]history[/] [[-a|--all]] [[--entry <text>]] [[--graph [[--commits]] [[--week|--month|--year|--all]]]] [[--file <path>]]");
-    AnsiConsole.MarkupLine("    Show recorded changes. Default: last 24h; --all: all retained history. With --entry: full timeline of one quest and its children.");
-    AnsiConsole.MarkupLine("  [yellow]init[/] [[--file <path>]] [[--force]]");
-    AnsiConsole.MarkupLine("    Initialize QuestJournal: create config and an optional skeleton journal file.");
-    AnsiConsole.MarkupLine("    With --graph: heatmap of XP over time (--week default, --month, --year, --all).");
-    AnsiConsole.MarkupLine("    With --graph --commits: heatmap of your git commits across lazygit's recent repos, one color per repo.");
+    console.MarkupLine("[bold]quest[/] - markdown task journal reader");
+    console.WriteLine();
+    console.MarkupLine("Commands:");
+    foreach (var cmd in commands)
+    {
+        console.MarkupLine($"  [yellow]{cmd.Name}[/]");
+        console.MarkupLine($"    {cmd.Description}");
+    }
 }

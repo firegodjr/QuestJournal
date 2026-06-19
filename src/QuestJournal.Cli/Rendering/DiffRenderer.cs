@@ -7,10 +7,12 @@ namespace QuestJournal.Cli.Rendering;
 public sealed class DiffRenderer
 {
     private readonly QuestTheme _theme;
+    private readonly IAnsiConsole _console;
 
-    public DiffRenderer(QuestTheme theme)
+    public DiffRenderer(QuestTheme theme, IAnsiConsole console)
     {
         _theme = theme;
+        _console = console;
     }
 
     public void RenderDiffTree(ChangeSet changeSet)
@@ -41,8 +43,8 @@ public sealed class DiffRenderer
             }
         }
 
-        AnsiConsole.Write(root);
-        AnsiConsole.WriteLine();
+        _console.Write(root);
+        _console.WriteLine();
     }
 
     public void RenderXpFooter(long xpAwarded, long todayXp, long totalXp)
@@ -51,11 +53,11 @@ public sealed class DiffRenderer
         var tally = $"[yellow1]{todayXp} today[/]  [yellow1]{totalXp} lifetime[/]";
         if (xpAwarded > 0)
         {
-            AnsiConsole.MarkupLine($"[green]+{xpAwarded}XP earned[/]! {sparkle} {tally}");
+            _console.MarkupLine($"[green]+{xpAwarded}XP earned[/]! {sparkle} {tally}");
         }
         else
         {
-            AnsiConsole.MarkupLine($"{sparkle} {tally}");
+            _console.MarkupLine($"{sparkle} {tally}");
         }
     }
 
@@ -120,7 +122,8 @@ public sealed class DiffRenderer
                 $"{_theme.StyledText(sc.NewStatus, name)} " +
                 $"[dim]({_theme.Label(sc.OldStatus)} → {_theme.Label(sc.NewStatus)})[/]{xpSuffix}",
 
-            _ => Markup.Escape(name),
+            _ => throw new InvalidOperationException(
+                $"Unexpected change type: {node.Change.GetType().Name}"),
         };
     }
 

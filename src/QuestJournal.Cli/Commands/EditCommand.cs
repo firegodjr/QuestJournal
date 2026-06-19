@@ -7,6 +7,9 @@ namespace QuestJournal.Cli.Commands;
 
 public sealed class EditCommand : ICommand
 {
+    public string Name => "edit";
+    public string Description => "Open the configured journal in $EDITOR. For nvim, drops a bundled .nvim.lua next to the journal if missing.";
+
     public int Run(string[] args)
     {
         var session = JournalSession.Open(fileOverride: null, requireConfig: true);
@@ -14,7 +17,7 @@ public sealed class EditCommand : ICommand
         var editor = Environment.GetEnvironmentVariable("EDITOR");
         if (string.IsNullOrWhiteSpace(editor))
         {
-            AnsiConsole.MarkupLine("[red]$EDITOR is not set.[/] Set it to your preferred editor (e.g. nvim).");
+            session.Console.MarkupLine("[red]$EDITOR is not set.[/] Set it to your preferred editor (e.g. nvim).");
             return 1;
         }
 
@@ -32,7 +35,7 @@ public sealed class EditCommand : ICommand
                 }
                 catch (IOException ex)
                 {
-                    ConsoleReporter.Warn("Warning", $"could not write {targetExrc}: {ex.Message}");
+                    session.Reporter.Warn("Warning", $"could not write {targetExrc}: {ex.Message}");
                 }
             }
         }
@@ -46,7 +49,7 @@ public sealed class EditCommand : ICommand
         using var proc = Process.Start(psi);
         if (proc is null)
         {
-            ConsoleReporter.Error("Failed to start editor", editor);
+            session.Reporter.Error("Failed to start editor", editor);
             return 1;
         }
         proc.WaitForExit();

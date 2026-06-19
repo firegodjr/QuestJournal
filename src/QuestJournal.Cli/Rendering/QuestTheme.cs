@@ -54,12 +54,8 @@ public sealed class QuestTheme
         string? TextStyle,
         string Label)
     {
-        private static readonly Presentation Fallback =
-            new(Ascii: " ", Nerd: " ", GlyphStyle: "", TextStyle: null, Label: "None");
-
         private static readonly Dictionary<QuestStatus, Presentation> Table = new()
         {
-            [QuestStatus.None] = Fallback,
             [QuestStatus.Open] = new(
                 Ascii: "[ ]",
                 Nerd:  "\U000F0131",
@@ -98,7 +94,13 @@ public sealed class QuestTheme
                 Label:      "Comment"),
         };
 
-        public static Presentation For(QuestStatus status) =>
-            Table.TryGetValue(status, out var p) ? p : Fallback;
+        public static Presentation For(QuestStatus status)
+        {
+            if (!Table.TryGetValue(status, out var p))
+            {
+                throw new ArgumentOutOfRangeException(nameof(status), status, "Unhandled QuestStatus value.");
+            }
+            return p;
+        }
     }
 }

@@ -20,13 +20,20 @@ public sealed class CommitHeatmapRenderer
     private const int MaxCharsPerCell = 4; // up to 8 stripe slots per cell
     private static readonly (int R, int G, int B) Empty = (38, 38, 38);
 
+    private readonly IAnsiConsole _console;
+
+    public CommitHeatmapRenderer(IAnsiConsole console)
+    {
+        _console = console;
+    }
+
     public void Render(CommitHeatmap grid)
     {
-        AnsiConsole.MarkupLine($"[bold]commits — {Window(grid.Scope)}[/]");
+        _console.MarkupLine($"[bold]commits — {Window(grid.Scope)}[/]");
 
         if (grid.IsEmpty || grid.Columns == 0 || grid.Rows == 0)
         {
-            AnsiConsole.MarkupLine("[dim]No commits to graph.[/]");
+            _console.MarkupLine("[dim]No commits to graph.[/]");
             return;
         }
 
@@ -49,13 +56,13 @@ public sealed class CommitHeatmapRenderer
                     line.Append(' ');
                 }
             }
-            AnsiConsole.MarkupLine(line.ToString());
+            _console.MarkupLine(line.ToString());
         }
 
-        AnsiConsole.WriteLine(ColumnHeader(grid.ColumnLabels, leftMargin, stride));
-        foreach (var line in LegendLines(grid.Layers, colors, AnsiConsole.Profile.Width))
+        _console.WriteLine(ColumnHeader(grid.ColumnLabels, leftMargin, stride));
+        foreach (var legendLine in LegendLines(grid.Layers, colors, _console.Profile.Width))
         {
-            AnsiConsole.MarkupLine(line);
+            _console.MarkupLine(legendLine);
         }
     }
 
@@ -220,7 +227,7 @@ public sealed class CommitHeatmapRenderer
         var width = Math.Max(maxWidth, 20);
 
         var labels = DisambiguateNames(layers);
-        var lines = new List<string>();
+        var legendLines = new List<string>();
         var current = new StringBuilder();
         var currentWidth = 0;
 
@@ -232,7 +239,7 @@ public sealed class CommitHeatmapRenderer
 
             if (current.Length > 0 && currentWidth + sep + entryWidth > width)
             {
-                lines.Add(current.ToString());
+                legendLines.Add(current.ToString());
                 current.Clear();
                 currentWidth = 0;
                 sep = 0;
@@ -249,9 +256,9 @@ public sealed class CommitHeatmapRenderer
 
         if (current.Length > 0)
         {
-            lines.Add(current.ToString());
+            legendLines.Add(current.ToString());
         }
-        return lines;
+        return legendLines;
     }
 
     /// <summary>

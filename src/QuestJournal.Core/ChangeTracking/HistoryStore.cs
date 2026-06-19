@@ -11,7 +11,7 @@ namespace QuestJournal.Core.ChangeTracking;
 /// <see cref="DetailMonths"/> most recent calendar months; older months are compacted into
 /// the <see cref="HistoryArchiveStore"/> and dropped on each append.
 /// </summary>
-public sealed class HistoryStore
+public sealed class HistoryStore : IHistoryStore
 {
     /// <summary>
     /// Number of recent calendar months kept as raw per-batch detail (3 months plus the
@@ -124,11 +124,11 @@ public sealed class HistoryStore
 
         var tmp = HistoryPath + ".tmp";
         File.WriteAllText(tmp, content);
-        if (File.Exists(HistoryPath))
+        try
         {
             File.Replace(tmp, HistoryPath, null);
         }
-        else
+        catch (IOException) when (!File.Exists(HistoryPath))
         {
             File.Move(tmp, HistoryPath);
         }

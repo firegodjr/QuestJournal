@@ -8,12 +8,15 @@ public static class XpCalculator
     {
         Change.StatusChanged sc when sc.NewStatus == QuestStatus.Completed => 10,
         Change.StatusChanged sc when sc.NewStatus == QuestStatus.Cancelled => 1,
+        Change.StatusChanged sc when sc.NewStatus == QuestStatus.Comment => 0,
         Change.StatusChanged => 2,
         Change.Added a when a.Status == QuestStatus.Comment => 0,
         Change.Added a when a.Status == QuestStatus.Completed && DayNames.IsYesterday(a.Key.Day) => 10,
         Change.Added => 1,
         Change.Removed => 0,
-        _ => 0,
+        Change.Moved => 0,
+        _ => throw new ArgumentOutOfRangeException(
+            nameof(change), change.GetType().Name, "Unexpected Change subtype."),
     };
 
     public static long Award(ChangeSet changes)

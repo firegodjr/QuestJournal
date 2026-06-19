@@ -5,6 +5,7 @@ using QuestJournal.Cli.Rendering;
 using QuestJournal.Core.Configuration;
 using QuestJournal.Core.Model;
 using QuestJournal.Core.Parsing;
+using Spectre.Console;
 
 namespace QuestJournal.Cli;
 
@@ -16,6 +17,8 @@ public sealed class JournalSession
     public JournalDocument Document { get; }
     public QuestTheme Theme { get; }
     public ChangeTrackingPipeline Pipeline { get; }
+    public IAnsiConsole Console { get; }
+    public ConsoleReporter Reporter { get; }
 
     private JournalSession(
         Config config,
@@ -23,7 +26,9 @@ public sealed class JournalSession
         bool fileOverridden,
         JournalDocument document,
         QuestTheme theme,
-        ChangeTrackingPipeline pipeline)
+        ChangeTrackingPipeline pipeline,
+        IAnsiConsole console,
+        ConsoleReporter reporter)
     {
         Config = config;
         FilePath = filePath;
@@ -31,27 +36,31 @@ public sealed class JournalSession
         Document = document;
         Theme = theme;
         Pipeline = pipeline;
+        Console = console;
+        Reporter = reporter;
     }
 
-    public static JournalSession Open(string? fileOverride, bool requireConfig)
+    public static JournalSession Open(string? fileOverride, bool requireConfig, IAnsiConsole? console = null)
     {
-        var config = LoadConfig(requireConfig);
+        var c = console ?? AnsiConsole.Console;
+        var reporter = new ConsoleReporter(c);
+        var config = LoadConfig(requireConfig, reporter);
         var filePath = fileOverride ?? config.FilePath;
 
         if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
         {
-            ConsoleReporter.Error("File not found", filePath ?? string.Empty);
+            reporter.Error("File not found", filePath ?? string.Empty);
             throw new JournalSessionException(reported: true);
         }
 
         var document = new JournalParser().ParseFile(filePath);
         var theme = config.NerdFontGlyphs ? QuestTheme.NerdFont : QuestTheme.Ascii;
-        var pipeline = new ChangeTrackingPipeline(theme);
+        var pipeline = new ChangeTrackingPipeline(theme, c);
 
-        return new JournalSession(config, filePath, fileOverride is not null, document, theme, pipeline);
+        return new JournalSession(config, filePath, fileOverride is not null, document, theme, pipeline, c, reporter);
     }
 
-    private static Config LoadConfig(bool requireConfig)
+    private static Config LoadConfig(bool requireConfig, ConsoleReporter reporter)
     {
         try
         {
@@ -61,10 +70,10 @@ public sealed class JournalSession
         {
             if (requireConfig)
             {
-                ConsoleReporter.Error("Config", ex.Message);
+                reporter.Error("Config", ex.Message);
                 throw new JournalSessionException(reported: true);
             }
-            ConsoleReporter.Warn("Config", ex.Message);
+            reporter.Warn("Config", ex.Message);
             return new Config();
         }
     }

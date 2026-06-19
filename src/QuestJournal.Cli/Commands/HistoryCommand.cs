@@ -1,7 +1,6 @@
 using QuestJournal.Cli.IO;
 using QuestJournal.Cli.Rendering;
 using QuestJournal.Core.ChangeTracking;
-using QuestJournal.Core.IO;
 using Spectre.Console;
 
 namespace QuestJournal.Cli.Commands;
@@ -15,80 +14,30 @@ namespace QuestJournal.Cli.Commands;
 /// </summary>
 public sealed class HistoryCommand : ICommand
 {
+    public string Name => "history";
+    public string Description => "Show recorded changes. Default: last 24h; --all: all retained history. With --entry: full timeline of one quest and its children.";
+
     private static readonly TimeSpan RecentWindow = TimeSpan.FromHours(24);
 
     public int Run(string[] args)
     {
-        string? entry = null;
-        string? fileOverride = null;
-        bool all = false;
-        bool graph = false;
-        bool commits = false;
-        GraphScope? explicitScope = null;
+        var parser = new ArgsParser(args);
+        var all = parser.HasFlag("-a") || parser.HasFlag("--all");
+        var graph = parser.HasFlag("--graph");
+        var commits = parser.HasFlag("--commits");
+        if (commits) graph = true;
+        var entry = parser.GetFlagValue("--entry");
+        var fileOverride = parser.GetFlagValue("--file");
 
+        // Scope flags: --week, --month, --year
+        GraphScope? explicitScope = null;
         for (int i = 0; i < args.Length; i++)
         {
-            var a = args[i];
-            switch (a)
+            switch (args[i])
             {
-                case "-a":
-                case "--all":
-                    all = true;
-                    break;
-                case "--graph":
-                    graph = true;
-                    break;
-                case "--commits":
-                    graph = true;
-                    commits = true;
-                    break;
-                case "--week":
-                    graph = true;
-                    explicitScope = GraphScope.Week;
-                    break;
-                case "--month":
-                    graph = true;
-                    explicitScope = GraphScope.Month;
-                    break;
-                case "--year":
-                    graph = true;
-                    explicitScope = GraphScope.Year;
-                    break;
-                case "--entry":
-                    // Greedily consume the following tokens up to the next flag, so an
-                    // unquoted multi-word entry (--entry write the report) works too.
-                    entry = ConsumeWords(args, ref i);
-                    if (entry is null)
-                    {
-                        ConsoleReporter.ErrorLine("--entry requires a quest text argument.");
-                        return 1;
-                    }
-                    break;
-                case "--file":
-                    if (i + 1 >= args.Length)
-                    {
-                        ConsoleReporter.ErrorLine("--file requires a path argument.");
-                        return 1;
-                    }
-                    fileOverride = args[++i];
-                    break;
-                default:
-                    if (a.StartsWith("--entry="))
-                    {
-                        var head = a.Substring("--entry=".Length);
-                        var tail = ConsumeWords(args, ref i);
-                        entry = tail is null ? head : $"{head} {tail}";
-                    }
-                    else if (a.StartsWith("--file="))
-                    {
-                        fileOverride = a.Substring("--file=".Length);
-                    }
-                    else
-                    {
-                        ConsoleReporter.Error("Unexpected argument", a);
-                        return 1;
-                    }
-                    break;
+                case "--week": graph = true; explicitScope = GraphScope.Week; break;
+                case "--month": graph = true; explicitScope = GraphScope.Month; break;
+                case "--year": graph = true; explicitScope = GraphScope.Year; break;
             }
         }
 
@@ -96,7 +45,8 @@ public sealed class HistoryCommand : ICommand
         if (commits)
         {
             var commitScope = explicitScope ?? (all ? GraphScope.All : GraphScope.Week);
-            return RenderCommitGraph(commitScope);
+            new CommitGraphOrchestrator(AnsiConsole.Console).Render(commitScope);
+            return 0;
         }
 
         var session = JournalSession.Open(fileOverride, requireConfig: false);
@@ -108,65 +58,17 @@ public sealed class HistoryCommand : ICommand
         if (graph)
         {
             var scope = explicitScope ?? (all ? GraphScope.All : GraphScope.Week);
-            return RenderGraph(session, entries, scope);
+            new HistoryGraphOrchestrator(session.Theme, session.Console).Render(entries, scope);
+            return 0;
         }
 
-        var renderer = new HistoryRenderer(session.Theme);
+        var renderer = new HistoryRenderer(session.Theme, session.Console);
         return entry is null
-            ? RenderRecent(renderer, entries, all)
-            : RenderTimeline(renderer, entries, entry);
+            ? RenderRecent(session, renderer, entries, all)
+            : RenderTimeline(session, renderer, entries, entry);
     }
 
-    private static int RenderGraph(JournalSession session, List<HistoryEntry> entries, GraphScope scope)
-    {
-        // The archive carries no journal path, so monthly scopes (year/all) include archived
-        // XP from every journal. Acceptable for v1 — most users track a single journal.
-        var archive = (scope is GraphScope.Year or GraphScope.All)
-            ? new HistoryArchiveStore().LoadAll()
-            : Array.Empty<HistoryArchiveMonth>();
-
-        var now = DateTimeOffset.Now;
-        var xpGrid = XpHistoryGraph.Build(scope, entries, archive, now, GraphMetric.Xp);
-        var completedGrid = XpHistoryGraph.Build(scope, entries, archive, now, GraphMetric.Completed);
-
-        if (xpGrid.Max == 0 && completedGrid.Max == 0)
-        {
-            AnsiConsole.MarkupLine("[dim]No history to graph.[/]");
-            return 0;
-        }
-
-        var renderer = new HeatmapRenderer(session.Theme);
-        renderer.Render(xpGrid);
-        AnsiConsole.WriteLine();
-        renderer.Render(completedGrid);
-        return 0;
-    }
-
-    private static int RenderCommitGraph(GraphScope scope)
-    {
-        var now = DateTimeOffset.Now;
-        var repos = LazygitRecentRepos.Load();
-        if (repos.Count == 0)
-        {
-            AnsiConsole.MarkupLine("[dim]No lazygit repositories found.[/]");
-            return 0;
-        }
-
-        var since = HeatmapLayout.WindowStartFor(scope, now);
-        var commits = new GitCommitCollector().Collect(repos, since);
-        var grid = CommitHistoryGraph.Build(scope, commits, now);
-
-        if (grid.IsEmpty)
-        {
-            AnsiConsole.MarkupLine("[dim]No commits to graph.[/]");
-            return 0;
-        }
-
-        new CommitHeatmapRenderer().Render(grid);
-        return 0;
-    }
-
-    private static int RenderRecent(HistoryRenderer renderer, List<HistoryEntry> entries, bool all)
+    private static int RenderRecent(JournalSession session, HistoryRenderer renderer, List<HistoryEntry> entries, bool all)
     {
         var selected = all
             ? entries
@@ -174,7 +76,7 @@ public sealed class HistoryCommand : ICommand
 
         if (selected.Count == 0)
         {
-            AnsiConsole.MarkupLine(all
+            session.Console.MarkupLine(all
                 ? "[dim]No history recorded.[/]"
                 : "[dim]No history in the last 24 hours.[/]");
             return 0;
@@ -184,7 +86,7 @@ public sealed class HistoryCommand : ICommand
         return 0;
     }
 
-    private static int RenderTimeline(HistoryRenderer renderer, List<HistoryEntry> entries, string entry)
+    private static int RenderTimeline(JournalSession session, HistoryRenderer renderer, List<HistoryEntry> entries, string entry)
     {
         var events = new List<(DateTimeOffset Timestamp, string Line)>();
 
@@ -208,27 +110,12 @@ public sealed class HistoryCommand : ICommand
 
         if (events.Count == 0)
         {
-            AnsiConsole.MarkupLine($"[dim]No history for \"{Markup.Escape(entry)}\".[/]");
+            session.Console.MarkupLine($"[dim]No history for \"{Markup.Escape(entry)}\".[/]");
             return 0;
         }
 
         renderer.RenderTimeline(entry, events);
         return 0;
-    }
-
-    /// <summary>
-    /// Joins the bare tokens following <paramref name="i"/> (advancing it past them) until
-    /// the next flag, so an unquoted multi-word value is captured as one string. Returns
-    /// null if no words follow.
-    /// </summary>
-    private static string? ConsumeWords(string[] args, ref int i)
-    {
-        var words = new List<string>();
-        while (i + 1 < args.Length && !args[i + 1].StartsWith('-'))
-        {
-            words.Add(args[++i]);
-        }
-        return words.Count == 0 ? null : string.Join(' ', words);
     }
 
     private static bool Matches(string entry, string text, List<string> ancestors) =>

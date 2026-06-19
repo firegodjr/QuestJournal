@@ -9,7 +9,7 @@ namespace QuestJournal.Core.ChangeTracking;
 /// (respects <c>XDG_DATA_HOME</c>). One <see cref="HistoryArchiveMonth"/> per line. Months are
 /// compacted here by <see cref="HistoryStore"/> as they age out of the detailed window.
 /// </summary>
-public sealed class HistoryArchiveStore
+public sealed class HistoryArchiveStore : IHistoryArchiveStore
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -94,11 +94,11 @@ public sealed class HistoryArchiveStore
 
         var tmp = ArchivePath + ".tmp";
         File.WriteAllText(tmp, content);
-        if (File.Exists(ArchivePath))
+        try
         {
             File.Replace(tmp, ArchivePath, null);
         }
-        else
+        catch (IOException) when (!File.Exists(ArchivePath))
         {
             File.Move(tmp, ArchivePath);
         }

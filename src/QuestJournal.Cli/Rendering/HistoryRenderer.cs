@@ -10,10 +10,12 @@ namespace QuestJournal.Cli.Rendering;
 public sealed class HistoryRenderer
 {
     private readonly QuestTheme _theme;
+    private readonly IAnsiConsole _console;
 
-    public HistoryRenderer(QuestTheme theme)
+    public HistoryRenderer(QuestTheme theme, IAnsiConsole console)
     {
         _theme = theme;
+        _console = console;
     }
 
     /// <summary>
@@ -24,21 +26,21 @@ public sealed class HistoryRenderer
         bool first = true;
         foreach (var entry in entries.OrderBy(e => e.Timestamp))
         {
-            if (!first) AnsiConsole.WriteLine();
+            if (!first) _console.WriteLine();
             first = false;
 
             var local = entry.Timestamp.ToLocalTime();
             var xp = entry.XpAwarded > 0 ? $"  [green]+{entry.XpAwarded} XP[/]" : string.Empty;
-            AnsiConsole.MarkupLine(
+            _console.MarkupLine(
                 $"[bold]{local:ddd HH:mm}[/] [dim]({Relative(entry.Timestamp)})[/]{xp}");
 
             foreach (var change in entry.Changes)
             {
-                AnsiConsole.MarkupLine($"  {ChangeLine(change)}");
+                _console.MarkupLine($"  {ChangeLine(change)}");
             }
             foreach (var move in entry.Moves)
             {
-                AnsiConsole.MarkupLine($"  {MoveLine(move)}");
+                _console.MarkupLine($"  {MoveLine(move)}");
             }
         }
     }
@@ -48,13 +50,13 @@ public sealed class HistoryRenderer
     /// </summary>
     public void RenderTimeline(string entryText, IReadOnlyList<(DateTimeOffset Timestamp, string Line)> events)
     {
-        AnsiConsole.MarkupLine($"[bold]Timeline for[/] {_theme.StyledText(Core.Model.QuestStatus.None, entryText)}");
-        AnsiConsole.WriteLine();
+        _console.MarkupLine($"[bold]Timeline for[/] [dim]{Markup.Escape(entryText)}[/]");
+        _console.WriteLine();
 
         foreach (var (timestamp, line) in events.OrderBy(e => e.Timestamp))
         {
             var local = timestamp.ToLocalTime();
-            AnsiConsole.MarkupLine($"[dim]{local:yyyy-MM-dd HH:mm}[/]  {line}");
+            _console.MarkupLine($"[dim]{local:yyyy-MM-dd HH:mm}[/]  {line}");
         }
     }
 
@@ -75,7 +77,8 @@ public sealed class HistoryRenderer
                 $"{_theme.StyledText(change.NewStatus, text)} " +
                 $"[dim]({_theme.Label(change.OldStatus)} → {_theme.Label(change.NewStatus)})[/]",
 
-            _ => Markup.Escape(text),
+            _ => throw new InvalidOperationException(
+                $"Unexpected change kind: {change.Kind}"),
         };
     }
 
