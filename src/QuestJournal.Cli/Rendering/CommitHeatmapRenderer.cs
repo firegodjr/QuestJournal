@@ -180,7 +180,12 @@ public sealed class CommitHeatmapRenderer
         {
             return Empty;
         }
-        var factor = 0.3 + 0.7 * (level - 1) / (Levels - 1);
+        // Same 0.6→1.0 brightness range as the XP/Completed heatmap (HeatmapRenderer.Shade), so the
+        // dimmest step stays readable rather than fading toward empty. That renderer flattens its
+        // bottom levels to one color and uses partial-coverage shade glyphs (░░, ▒▒) to carry the
+        // low-end gradient; the half-block packing here has no room for glyph density, so we keep
+        // five distinct brightness steps spread across the shared range instead.
+        var factor = 0.6 + 0.4 * (level - 1) / (Levels - 1);
         return (
             (int)Math.Round(full.R * factor),
             (int)Math.Round(full.G * factor),

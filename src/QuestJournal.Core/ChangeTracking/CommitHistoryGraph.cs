@@ -3,8 +3,9 @@ namespace QuestJournal.Core.ChangeTracking;
 /// <summary>
 /// Buckets each repository's commit timestamps into a shared <see cref="HeatmapLayout"/>,
 /// producing one <see cref="RepoLayer"/> per repo that committed in the window. Uses the same
-/// layout (and therefore the same local-time bucketing) as <see cref="XpHistoryGraph"/>, except
-/// the week scope spans the full 24 hours so late-night commits aren't dropped.
+/// layout (and therefore the same axes and local-time bucketing) as <see cref="XpHistoryGraph"/>:
+/// the week scope's 07–19 hour-blocks clamp off-hours commits into the edge rows (see
+/// <see cref="HeatmapLayout.ForDayHour"/>) rather than dropping them.
 /// </summary>
 public static class CommitHistoryGraph
 {
@@ -65,7 +66,7 @@ public static class CommitHistoryGraph
         switch (scope)
         {
             case GraphScope.Week:
-                return HeatmapLayout.ForDayHour(scope, now, days: 7, labelFormat: "dd", startHour: 0, endHour: 24, blockHours: 2);
+                return HeatmapLayout.ForDayHour(scope, now, days: 7, labelFormat: "dd", startHour: 7, endHour: 19, blockHours: 2);
             case GraphScope.Month:
                 return HeatmapLayout.ForMonthCalendar(scope, now, monthsBack: 3);
             case GraphScope.Year:

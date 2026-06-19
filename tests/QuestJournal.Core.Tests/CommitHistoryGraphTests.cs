@@ -26,28 +26,28 @@ public class CommitHistoryGraphTests
     {
         var repos = new[]
         {
-            Repo("a", Local(2026, 6, 15, 9), Local(2026, 6, 15, 9)), // today (col 6), 08–10 block (row 4)
-            Repo("b", Local(2026, 6, 13, 17)),                       // two days ago (col 4), 16–18 block (row 8)
+            Repo("a", Local(2026, 6, 15, 9), Local(2026, 6, 15, 9)), // today (col 6), 09 block (row 1)
+            Repo("b", Local(2026, 6, 13, 17)),                       // two days ago (col 4), 17 block (row 5)
         };
 
         var grid = CommitHistoryGraph.Build(GraphScope.Week, repos, Now);
 
         Assert.Equal(7, grid.Columns);
-        Assert.Equal(12, grid.Rows); // full 24h in 2-hour blocks
-        Assert.Equal(new[] { "00", "02", "04", "06", "08", "10", "12", "14", "16", "18", "20", "22" }, grid.RowLabels);
+        Assert.Equal(6, grid.Rows); // 07–19 in 2-hour blocks, matching the XP graph
+        Assert.Equal(new[] { "07", "09", "11", "13", "15", "17" }, grid.RowLabels);
         Assert.Equal(2, grid.Layers.Count);
-        Assert.Equal(2, grid.Layers[0].Counts[4, 6]); // repo a: two commits in one cell
-        Assert.Equal(1, grid.Layers[1].Counts[8, 4]); // repo b
+        Assert.Equal(2, grid.Layers[0].Counts[1, 6]); // repo a: two commits in one cell
+        Assert.Equal(1, grid.Layers[1].Counts[5, 4]); // repo b
     }
 
     [Fact]
-    public void Week_keeps_night_commits_unlike_xp_graph()
+    public void Week_clamps_night_commits_into_edge_row_like_xp_graph()
     {
-        var repos = new[] { Repo("a", Local(2026, 6, 15, 3)) }; // 3am
+        var repos = new[] { Repo("a", Local(2026, 6, 15, 3)) }; // 3am, before the 07 block
 
         var grid = CommitHistoryGraph.Build(GraphScope.Week, repos, Now);
 
-        Assert.Equal(1, grid.Layers[0].Counts[1, 6]); // 02–04 block (row 1), today (col 6)
+        Assert.Equal(1, grid.Layers[0].Counts[0, 6]); // clamped into first row (07 block), today (col 6)
     }
 
     [Fact]
